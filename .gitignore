@@ -1,1 +1,7 @@
 dumps/
+@diag
+items.csv
+p625.csv
+props.csv
+props.json
+typescript
