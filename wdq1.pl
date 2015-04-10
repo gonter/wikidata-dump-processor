@@ -8,9 +8,50 @@ $Data::Dumper::Indent= 1;
 
 my $TSV_SEP= "\t";
 
-my $fnm= '20141215.json';
+# my $fnm= '20141215.json';
+my $fnm;
 
 my @langs= qw(en de it fr);
+
+my @PARS= ();
+while (my $arg= shift (@ARGV))
+{
+  if ($arg eq '--') { push (@PARS, @ARGV); @ARGV=(); }
+  elsif ($arg =~ /^--(.+)/)
+  {
+    my ($an, $av)= split ($1, '=', 2);
+    usage();
+  }
+  elsif ($arg =~ /^-(.+)/)
+  {
+    foreach my $flag (split('', $1))
+    {
+      usage();
+    }
+  }
+  else { push (@PARS, $arg); }
+}
+
+sub usage
+{
+  system ('perldoc', $0);
+  exit;
+}
+
+if (@PARS)
+{
+  $fnm= shift (@PARS);
+}
+
+usage() unless (defined ($fnm));
+
+analyze_dump ($fnm);
+
+exit(0);
+
+sub analyze_dump
+{
+  my $fnm= shift;
 
 # statistics
 my %types;
@@ -27,10 +68,19 @@ my %props;
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks);
 
-open (FI, '<:utf8', $fnm) or die;
+if ($fnm =~ /\.gz$/)
+{
+  open (FI, '-|', "gunzip -c '$fnm'") or die "can't gunzip [$fnm]";
+}
+else
+{
+  open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
+}
 my $line= 0;
 
-open (FO, '>:utf8', 'items.csv') or die;
+my $fnm_out= 'items.csv';
+
+open (FO, '>:utf8', $fnm_out) or die "can't write to [$fnm_out]";
 print FO join ($TSV_SEP, qw(line pos id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink has_p625)), "\n";
 
 open (DIAG, '>:utf8', '@diag') or die;
@@ -198,7 +248,7 @@ print "prop_claims: ", Dumper (\%prop_claims);
 
 close(FI);
 
-exit(0);
+}
 
 sub counter
 {
