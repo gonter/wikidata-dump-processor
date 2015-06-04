@@ -1,7 +1,11 @@
 dumps/
+out/
 @diag
 items.csv
-p625.csv
 props.csv
 props.json
 typescript
+P227.csv
+P234.csv
+P496.csv
+P625.csv
