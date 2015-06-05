@@ -3,6 +3,8 @@
 use strict;
 
 use JSON;
+use Compress::Zlib;
+
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
@@ -56,6 +58,8 @@ sub analyze_dump
 {
   my $fnm= shift;
 
+open (DIAG, '>:utf8', '@diag') or die;
+
 # statistics
 my %types;
 my %attrs;
@@ -81,6 +85,7 @@ else
 }
 my $line= 0;
 
+# item list
 my $fnm_items= 'items.csv';
 
 local *FO_ITEMS;
@@ -88,15 +93,46 @@ open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
 my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink);
 print FO_ITEMS join ($TSV_SEP, @cols1, qw(has_props)), "\n";
 
-open (DIAG, '>:utf8', '@diag') or die;
-
+# properties
 my @cols_filt= (@cols1, 'lang', 'label', 'val');
+
+sub wdpf
+{
+  my $prop= shift;
+  my $label= shift;
+
+  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt);
+}
+
 my %filters=
 (
-  'P625' => new WikiData::Property::Filter ('property' => 'P625', 'label' => 'Geo Coordinates', 'cols' => \@cols_filt),
-  'P227' => new WikiData::Property::Filter ('property' => 'P227', 'label' => 'GND Identifier', 'cols' => \@cols_filt),
-  'P214' => new WikiData::Property::Filter ('property' => 'P214', 'label' => 'VIAF Identifier', 'cols' => \@cols_filt),
-  'P496' => new WikiData::Property::Filter ('property' => 'P496', 'label' => 'ORCID Identifier', 'cols' => \@cols_filt),
+  # person identifiers
+  'P227'  => wdpf ( 'P227', 'GND identifier'),
+  'P214'  => wdpf ( 'P214', 'VIAF identifier'),
+  'P496'  => wdpf ( 'P496', 'ORCID identifier'),
+
+  'P213'  => wdpf ( 'P213', 'ISNI'), # check
+
+  # personal data?
+  'P569'  => wdpf ( 'P569', 'Date of birth'),
+  'P570'  => wdpf ( 'P570', 'Date of death'),
+
+  # publications
+  'P345'  => wdpf ( 'P345', 'IMDb identifier'),
+  'P212'  => wdpf ( 'P212', 'ISBN-13'),
+  'P236'  => wdpf ( 'P212', 'ISSN'),
+  'P957'  => wdpf ( 'P957', 'ISBN-10'),
+
+  'P356'  => wdpf ( 'P356', 'DOI'),
+  'P1184' => wdpf ( 'P1184', 'Handle'),
+
+  # MusicBrainz
+  'P434'  => wdpf ( 'P434', 'MusicBrainz artist id'),
+  'P435'  => wdpf ( 'P435', 'MusicBrainz work id'),
+  'P436'  => wdpf ( 'P436', 'MusicBrainz release group id'),
+  'P1004' => wdpf ( 'P1004', 'MusicBrainz place id'),
+
+  'P625'  => wdpf ( 'P625', 'Geo Coordinates'),
 );
 my @filters= sort keys %filters;
 
@@ -105,7 +141,7 @@ local *FO_RECODED;
 my $fo_open= 0;
 my $fo_count= 0;
 my $fo_pos= 0;
-my $fo_gz= 0;
+my $fo_compress= 2;
 
 sub close_fo
 {
@@ -122,10 +158,16 @@ sub open_fo
   close_fo();
 
   my $fo_fnm;
-  if ($fo_gz)
+
+  if ($fo_compress == 1)
   {
     $fo_fnm= sprintf ("out/wdq%05d.gz", ++$fo_count);
     open (FO_RECODED, '|-', "gzip -c >'$fo_fnm'") or die "can't write to [$fo_fnm]";
+  }
+  elsif ($fo_compress == 2)
+  {
+    $fo_fnm= sprintf ("out/wdq%05d.cmp", ++$fo_count);
+    open (FO_RECODED, '>:raw', $fo_fnm) or die "can't write to [$fo_fnm]";
   }
   else
   {
@@ -201,7 +243,15 @@ LINE: while (1)
   }
 
   # my $py= substr($l, 0, 30) . '...' . substr ($l, -30);
-  my $px= print FO_RECODED $l, "\n";
+  my $px;
+  if ($fo_compress == 2)
+  {
+    $px= print FO_RECODED compress($l);
+  }
+  else
+  {
+    $px= print FO_RECODED $l, "\n";
+  }
   my $fo_pos_end= tell (FO_RECODED);
   # print "px=[$px] l=[$py]\n";
 
@@ -250,9 +300,13 @@ LINE: while (1)
 
       # print "x: ", Dumper ($x); # exit;
 
-      if ($@ || !defined ($x))
+      if ($@)
       {
-        print DIAG "$id x=[$x] e=[$@] filtered_property=[$filtered_property] property=", Dumper ($p);
+        print DIAG "id=$id error: filtered_property=[$filtered_property] $x=[$x] e=[$@] property=", Dumper ($p);
+      }
+      elsif (!defined ($x))
+      {
+        print DIAG "id=$id undef x: filtered_property=[$filtered_property] property=", Dumper ($p);
       }
       else
       {
@@ -292,7 +346,7 @@ close_fo();
 # check if there are multiple definitions of the same property and flatten the structure a bit
 open (PROPS_LIST, '>:utf8', 'props.csv') or die;
 print PROPS_LIST join ($TSV_SEP, qw(prop def_cnt use_cnt datatype label_en descr_en)), "\n";
-foreach my $prop (keys %props)
+foreach my $prop (sort keys %props)
 {
   my @prop= @{$props{$prop}};
   my $p0= $prop[0];

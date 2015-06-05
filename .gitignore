@@ -3,6 +3,7 @@ out/
 @*
 items.csv
 props.csv
+props.saved.csv
 props.json
 typescript
 P214.csv
@@ -10,3 +11,4 @@ P227.csv
 P234.csv
 P496.csv
 P625.csv
+P*.csv
