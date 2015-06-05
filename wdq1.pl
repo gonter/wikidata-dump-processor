@@ -7,7 +7,9 @@ use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
 my $TSV_SEP= "\t";
-my $OUT_CHUNK_SIZE= 100_000_000;
+my $OUT_CHUNK_SIZE= 500_000_000;
+my $MAX_INPUT_LINES= undef;
+# my $MAX_INPUT_LINES= 100_000;
 
 # my $fnm= '20141215.json';
 my $fnm= 'dumps/20150601.json.gz';
@@ -88,12 +90,13 @@ print FO_ITEMS join ($TSV_SEP, @cols1, qw(has_props)), "\n";
 
 open (DIAG, '>:utf8', '@diag') or die;
 
+my @cols_filt= (@cols1, 'lang', 'label', 'val');
 my %filters=
 (
-  'P625' => new WikiData::Property::Filter ('property' => 'P625', 'label' => 'Geo Coordinates', 'cols' => \@cols1),
-  'P227' => new WikiData::Property::Filter ('property' => 'P227', 'label' => 'GND Identifier', 'cols' => \@cols1),
-  'P234' => new WikiData::Property::Filter ('property' => 'P234', 'label' => 'VIAF Identifier', 'cols' => \@cols1),
-  'P496' => new WikiData::Property::Filter ('property' => 'P496', 'label' => 'ORCID Identifier', 'cols' => \@cols1),
+  'P625' => new WikiData::Property::Filter ('property' => 'P625', 'label' => 'Geo Coordinates', 'cols' => \@cols_filt),
+  'P227' => new WikiData::Property::Filter ('property' => 'P227', 'label' => 'GND Identifier', 'cols' => \@cols_filt),
+  'P214' => new WikiData::Property::Filter ('property' => 'P214', 'label' => 'VIAF Identifier', 'cols' => \@cols_filt),
+  'P496' => new WikiData::Property::Filter ('property' => 'P496', 'label' => 'ORCID Identifier', 'cols' => \@cols_filt),
 );
 my @filters= sort keys %filters;
 
@@ -213,6 +216,25 @@ LINE: while (1)
   my $c_jc= counter ($jc, \%prop_claims);
   my $c_js= counter ($js, \%name_sitelinks);
 
+  # language translations
+  my (%tlt_l, %tlt_d);
+  my ($pref_l, $lang_l);
+  foreach my $lang (@langs)
+  {
+    my $label= $jl->{$lang}->{'value'};
+    my $desc=  $jd->{$lang}->{'value'};
+    $tlt_l{$lang}= $label;
+    $tlt_d{$lang}= $label;
+
+    unless (defined ($pref_l))
+    {
+      $pref_l= $label;
+      $lang_l= $lang;
+    }
+  }
+  # print "tlt_l: ", Dumper (\%tlt_l);
+  # print "tlt_d: ", Dumper (\%tlt_d);
+
   my @found_properties= ();
   foreach my $filtered_property (@filters)
   {
@@ -243,21 +265,14 @@ LINE: while (1)
                  $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
                  $id, $ty,
                  $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
-                 $y), "\n";
+                 $lang_l, $pref_l,
+                 $y,
+                 ), "\n";
       }
     }
   }
 
 # TODO: count claims, aliases, sitelinks, etc.
-
-  my (%tlt_l, %tlt_d);
-  foreach my $lang (@langs)
-  {
-    my $label= $jl->{$lang}->{'value'};
-    my $desc=  $jd->{$lang}->{'value'};
-    $tlt_l{$lang}= $label;
-    $tlt_d{$lang}= $label;
-  }
 
   # print "[$line] [$pos] ", Dumper ($j) if ($ty eq 'property');
   print FO_ITEMS join ($TSV_SEP,
@@ -267,7 +282,7 @@ LINE: while (1)
                  join (',', @found_properties)),
                  "\n";
 
-  last if ($line >= 40_000); ### DEBUG
+  last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
   # $pos= tell(FI);
 }
 

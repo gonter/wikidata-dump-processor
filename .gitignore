@@ -1,10 +1,11 @@
 dumps/
 out/
-@diag
+@*
 items.csv
 props.csv
 props.json
 typescript
+P214.csv
 P227.csv
 P234.csv
 P496.csv
