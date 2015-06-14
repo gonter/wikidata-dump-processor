@@ -107,32 +107,38 @@ sub wdpf
 my %filters=
 (
   # person identifiers
-  'P227'  => wdpf ( 'P227', 'GND identifier'),
-  'P214'  => wdpf ( 'P214', 'VIAF identifier'),
-  'P496'  => wdpf ( 'P496', 'ORCID identifier'),
+  'P227'  => wdpf ('P227', 'GND identifier'),
+  'P214'  => wdpf ('P214', 'VIAF identifier'),
+  'P496'  => wdpf ('P496', 'ORCID identifier'),
 
-  'P213'  => wdpf ( 'P213', 'ISNI'), # check
+  'P213'  => wdpf ('P213', 'ISNI'), # check
 
   # personal data?
-  'P569'  => wdpf ( 'P569', 'Date of birth'),
-  'P570'  => wdpf ( 'P570', 'Date of death'),
+  'P569'  => wdpf ('P569', 'Date of birth'),
+  'P570'  => wdpf ('P570', 'Date of death'),
 
   # publications
-  'P345'  => wdpf ( 'P345', 'IMDb identifier'),
-  'P212'  => wdpf ( 'P212', 'ISBN-13'),
-  'P236'  => wdpf ( 'P212', 'ISSN'),
-  'P957'  => wdpf ( 'P957', 'ISBN-10'),
+  'P345'  => wdpf ('P345', 'IMDb identifier'),
+  'P212'  => wdpf ('P212', 'ISBN-13'),
+  'P236'  => wdpf ('P212', 'ISSN'),
+  'P957'  => wdpf ('P957', 'ISBN-10'),
 
-  'P356'  => wdpf ( 'P356', 'DOI'),
-  'P1184' => wdpf ( 'P1184', 'Handle'),
+  # permanent identifiers
+  'P356'  => wdpf ('P356',  'DOI'),
+  'P1184' => wdpf ('P1184', 'Handle'),
+
+  # getty
+  'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
+  'P1014' => wdpf ('P1014', 'AAT identifier'),  # Art & Architecture Thesaurus by the Getty Research Institute
+  'P1667' => wdpf ('P1667', 'TGN identifier'),  # Getty Thesaurus of Geographic Names
 
   # MusicBrainz
-  'P434'  => wdpf ( 'P434', 'MusicBrainz artist id'),
-  'P435'  => wdpf ( 'P435', 'MusicBrainz work id'),
-  'P436'  => wdpf ( 'P436', 'MusicBrainz release group id'),
-  'P1004' => wdpf ( 'P1004', 'MusicBrainz place id'),
+  'P434'  => wdpf ('P434', 'MusicBrainz artist id'),
+  'P435'  => wdpf ('P435', 'MusicBrainz work id'),
+  'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
+  'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
 
-  'P625'  => wdpf ( 'P625', 'Geo Coordinates'),
+  'P625'  => wdpf ('P625', 'Geo Coordinates'),
 );
 my @filters= sort keys %filters;
 
