@@ -9,12 +9,16 @@ use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
 my $TSV_SEP= "\t";
-my $OUT_CHUNK_SIZE= 500_000_000;
+my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
 my $MAX_INPUT_LINES= undef;
-# my $MAX_INPUT_LINES= 100_000;
+# my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
+
+my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
+my $LR_max_propid= 1922;
 
 # my $fnm= '20141215.json';
-my $fnm= 'dumps/20150601.json.gz';
+# my $fnm= 'dumps/20150601.json.gz';
+my $fnm= 'dumps/wikidata-20150608-all.json.gz';
 
 my @langs= qw(en de it fr);
 
@@ -91,7 +95,7 @@ my $fnm_items= 'items.csv';
 local *FO_ITEMS;
 open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
 my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink);
-print FO_ITEMS join ($TSV_SEP, @cols1, qw(has_props)), "\n";
+print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
 
 # properties
 my @cols_filt= (@cols1, 'lang', 'label', 'val');
@@ -147,7 +151,11 @@ local *FO_RECODED;
 my $fo_open= 0;
 my $fo_count= 0;
 my $fo_pos= 0;
+
 my $fo_compress= 2;
+# 0..don't compress at all
+# 1..compress output stream by piping into gzip
+# 2..compress individual records using Compress::Zlib::compress()
 
 sub close_fo
 {
@@ -191,6 +199,18 @@ sub open_fo
 
 open_fo();
 
+# Property Bitmap Table
+my @id_prop= (); # bitmap table
+my $max_id= -1;
+my $max_prop= 2000;
+
+if ($exp_bitmap)
+{
+  my $BM_file= '@id_prop.bitmap';
+  print "saving bitmap [$BM_file]\n";
+  open (BM_FILE, '>:raw', $BM_file) or die "can't write to [$BM_file]\n";
+}
+
 <FI>;
 my $pos;
 LINE: while (1)
@@ -230,6 +250,22 @@ LINE: while (1)
   }
 
   my ($id, $ty)= map { $j->{$_} } qw(id type);
+  my $id_num;
+
+  if ($id =~ m#^P(\d+)$#)
+  {
+    $id_num= undef;
+  }
+  elsif ($id =~ m#^Q(\d+)$#)
+  {
+    $id_num= $1;
+    $max_id= $id_num if ($id_num > $max_id);
+  }
+  else
+  {
+    print "WARNING: id=[$id]: format incorrect\n";
+    next LINE;
+  }
 
   $types{$ty}++;
 
@@ -240,7 +276,7 @@ LINE: while (1)
     next LINE;
   }
 
-  if ($ty ne 'item')
+  if ($ty ne 'item' || !defined ($id_num))
   {
     print "[$line] [$pos] unknown type=[$ty]\n";
     print DIAG "[$line] [$pos] type=[$ty] line=[$line]\n";
@@ -291,14 +327,36 @@ LINE: while (1)
   # print "tlt_l: ", Dumper (\%tlt_l);
   # print "tlt_d: ", Dumper (\%tlt_d);
 
+  # claims -> properties
+  my @all_properties= sort keys %$jc;
+
+  # properties filtered
   my @found_properties= ();
-  foreach my $filtered_property (@filters)
+  my @bm_row=(); for (my $i= 0; $i <= $max_prop; $i++) { $bm_row[$i]='.' }
+
+  # foreach my $property (@filters)
+  PROP: foreach my $property (@all_properties)
   {
-    if (exists ($jc->{$filtered_property}))
+    my $prop_num;
+    if ($property =~ m#^P(\d+)$#)
     {
-      my $fp= $filters{$filtered_property};
+      $prop_num= $1;
+      $max_prop= $prop_num if ($prop_num > $max_prop);
+    }
+    else
+    {
+      print "WARNING: property=[$property]: format incorrect\n";
+      next PROP;
+    }
+    $id_prop[$id_num]->[$prop_num]++ if ($exp_bitmap == 1);
+    $bm_row[$prop_num]='#' if ($exp_bitmap == 2);
+
+    # if (exists ($jc->{$property}))
+    if (exists ($filters{$property}))
+    {
+      my $fp= $filters{$property};
       # print "fp: ", Dumper ($fp);
-      my $p= $jc->{$filtered_property};
+      my $p= $jc->{$property};
       # print "p: ", Dumper ($p);
 
       my $x;
@@ -308,16 +366,16 @@ LINE: while (1)
 
       if ($@)
       {
-        print DIAG "id=$id error: filtered_property=[$filtered_property] $x=[$x] e=[$@] property=", Dumper ($p);
+        print DIAG "id=$id error: property=[$property] $x=[$x] e=[$@] property=", Dumper ($p);
       }
       elsif (!defined ($x))
       {
-        print DIAG "id=$id undef x: filtered_property=[$filtered_property] property=", Dumper ($p);
+        print DIAG "id=$id undef x: property=[$property] property=", Dumper ($p);
       }
       else
       {
   # ZZZ
-        push (@found_properties, $filtered_property);
+        push (@found_properties, $property);
 
         my $y= (ref ($x) eq 'HASH') ? encode_json ($x) : $x;
         local *FO_p= $fp->{'_FO'};
@@ -339,8 +397,14 @@ LINE: while (1)
                  $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
                  $id, $ty,
                  $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
-                 join (',', @found_properties)),
+                 join (',', @found_properties),
+                 join (',', @all_properties),
+                 ),
                  "\n";
+
+  printf BM_FILE ("%09d\t", $id_num);
+  print BM_FILE join ('', @bm_row);
+  print BM_FILE "\n";
 
   last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
   # $pos= tell(FI);
@@ -352,23 +416,28 @@ close_fo();
 # check if there are multiple definitions of the same property and flatten the structure a bit
 open (PROPS_LIST, '>:utf8', 'props.csv') or die;
 print PROPS_LIST join ($TSV_SEP, qw(prop def_cnt use_cnt datatype label_en descr_en)), "\n";
-foreach my $prop (sort keys %props)
+
+my @prop_ids= sort { $a <=> $b } map { ($_ =~ m#^P(\d+)$#) ? $1 : undef } keys %props;
+
+foreach my $prop_num (@prop_ids)
+# foreach my $prop_num (sort keys %props)
 {
-  my @prop= @{$props{$prop}};
+  my $prop_id= 'P'.$prop_num;
+  my @prop= @{$props{$prop_id}};
   my $p0= $prop[0];
-  if (@prop != 1)
+  if (@prop != 1) # each property needs to be defined exactly once
   {
-    print "ATTN: prop=[$prop] count=",(scalar @prop), "\n";
+    print "ATTN: prop=[$prop_num] count=",(scalar @prop), "\n";
   }
   else
   {
-    $props{$prop}= $p0;
+    $props{$prop_num}= $p0;
   }
 
   my $dt= $p0->{'datatype'};
   my $l_en= $p0->{'labels'}->{'en'}->{'value'};
   my $d_en= $p0->{'descriptions'}->{'en'}->{'value'};
-  print PROPS_LIST join ($TSV_SEP, $prop, (scalar @prop), $prop_claims{$prop}, $dt, $l_en, $d_en), "\n";
+  print PROPS_LIST join ($TSV_SEP, $prop_id, (scalar @prop), $prop_claims{$prop_id}, $dt, $l_en, $d_en), "\n";
 }
 close (PROPS_LIST);
 
@@ -385,11 +454,34 @@ print "lang_aliases: ", Dumper (\%lang_aliases);
 print "name_sitelinks: ", Dumper (\%name_sitelinks);
 print "prop_claims: ", Dumper (\%prop_claims);
 
+print "max_id: $max_id\n";
+print "max_prop: $max_prop\n";
 print "lines: $line\n";
 print "fo_count: $fo_count\n";
 
-close(FI);
+  if ($exp_bitmap == 1)
+  {
+   # ID to property mapping bitmap
+   for (my $id= 1; $id <= $max_id; $id++)
+   {
+     my $row= $id_prop[$id];
+     printf BM_FILE ("%09d\t", $id);
+     for (my $prop= 0; $prop <= $max_prop; $prop++)
+     # foreach my $prop (@prop_ids)
+     {
+       my $val= $row->[$prop];
+       if ($val < 0 || $val > 1)
+       {
+         print "warning: invalid count id=[$id] prop=[$prop]\n";
+       }
+       print BM_FILE ($val) ? '#' : '.';
+     }
+     print BM_FILE "\n";
+   }
+   # print "prop_ids: ", join (' ', @prop_ids), "\n";
+  }
 
+  close (BM_FILE) if ($exp_bitmap);
 }
 
 sub counter

@@ -1,6 +1,8 @@
 dumps/
 out/
+data/
 @*
+conv_2015-06-14a.tys
 items.csv
 props.csv
 props.saved.csv
