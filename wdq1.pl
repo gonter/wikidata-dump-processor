@@ -14,13 +14,18 @@ my $MAX_INPUT_LINES= undef;
 # my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
 
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
-my $LR_max_propid= 1922;
+my $LR_max_propid= 1930; # dump from 20150608
 
 # my $fnm= '20141215.json';
 # my $fnm= 'dumps/20150601.json.gz';
 my $fnm= 'dumps/wikidata-20150608-all.json.gz';
 
 my @langs= qw(en de it fr);
+
+my $fo_compress= 2;
+# 0..don't compress at all
+# 1..compress output stream by piping into gzip; DO NOT USE
+# 2..compress individual records using Compress::Zlib::compress()
 
 my @PARS= ();
 while (my $arg= shift (@ARGV))
@@ -88,28 +93,37 @@ else
   open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
 }
 my $line= 0;
+my $t_start= time();
 
 # item list
 my $fnm_items= 'items.csv';
 
 local *FO_ITEMS;
 open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
-my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink);
+my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
 print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
 
 # properties
-my @cols_filt= (@cols1, 'lang', 'label', 'val');
+my @cols_filt= (@cols1, 'val');
 
 sub wdpf
 {
   my $prop= shift;
   my $label= shift;
+  my $transform= shift;
 
-  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt);
+  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform);
 }
 
 my %filters=
 (
+  # structure
+  'P31'  => wdpf ('P31', 'instance of', 1),
+  'P279'  => wdpf ('P279', 'subclass of', 1),
+  'P360'  => wdpf ('P360', 'is a list of', 1),
+  'P361'  => wdpf ('P361', 'part of', 1),
+  'P1269' => wdpf ('P1269', 'facet of', 1),
+
   # person identifiers
   'P227'  => wdpf ('P227', 'GND identifier'),
   'P214'  => wdpf ('P214', 'VIAF identifier'),
@@ -130,6 +144,7 @@ my %filters=
   # permanent identifiers
   'P356'  => wdpf ('P356',  'DOI'),
   'P1184' => wdpf ('P1184', 'Handle'),
+  'P727'  => wdpf ('P727',  'Europeana ID'),
 
   # getty
   'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
@@ -152,10 +167,6 @@ my $fo_open= 0;
 my $fo_count= 0;
 my $fo_pos= 0;
 
-my $fo_compress= 2;
-# 0..don't compress at all
-# 1..compress output stream by piping into gzip
-# 2..compress individual records using Compress::Zlib::compress()
 
 sub close_fo
 {
@@ -377,7 +388,8 @@ LINE: while (1)
   # ZZZ
         push (@found_properties, $property);
 
-        my $y= (ref ($x) eq 'HASH') ? encode_json ($x) : $x;
+        my $y= $fp->extract($x);
+
         local *FO_p= $fp->{'_FO'};
         print FO_p join ($TSV_SEP,
                  $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
@@ -397,6 +409,7 @@ LINE: while (1)
                  $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
                  $id, $ty,
                  $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
+                 $lang_l, $pref_l,
                  join (',', @found_properties),
                  join (',', @all_properties),
                  ),
@@ -482,6 +495,11 @@ print "fo_count: $fo_count\n";
   }
 
   close (BM_FILE) if ($exp_bitmap);
+
+  my $t_end= time();
+  print "started:  ", scalar localtime ($t_start), "\n";
+  print "finished: ", scalar localtime ($t_end), "\n";
+  print "duration: ", $t_end-$t_start, " seconds\n";
 }
 
 sub counter
@@ -516,7 +534,14 @@ sub set
 
   foreach my $par (keys %par)
   {
-    $obj->{$par}= $par{$par};
+    if (defined ($par{$par}))
+    {
+      $obj->{$par}= $par{$par};
+    }
+    else
+    {
+      delete($obj->{$par});
+    }
   }
 }
 
@@ -550,6 +575,32 @@ sub setup
       }
 
   $res;
+}
+
+sub extract
+{
+  my $fp= shift;
+  my $x= shift;
+
+  my $y;
+
+  if ($fp->{'transform'} == 1 && ref ($x) eq 'HASH')
+  {
+    my $et;
+    if ($x->{'entity-type'} eq 'item') { $et= 'Q'; }
+    elsif ($x->{'entity-type'} eq 'property') { $et= 'P'; }
+    $y= $et . $x->{'numeric-id'} if (defined ($et));
+  }
+  elsif (ref ($x) eq 'HASH')
+  {
+    $y= JSON::encode_json ($x);
+  }
+  else
+  {
+    $y= $x;
+  }
+
+  $y;
 }
 
 __END__
