@@ -17,8 +17,10 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 my $LR_max_propid= 1930; # dump from 20150608
 
 # my $fnm= '20141215.json';
-# my $fnm= 'dumps/20150601.json.gz';
-my $fnm= 'dumps/wikidata-20150608-all.json.gz';
+my $fnm= 'dumps/20150805.json.gz';
+# my $fnm= 'dumps/wikidata-20150608-all.json.gz';
+my $data_dir= 'data/2015-08-09a';
+my $out_dir= 'data/2015-08-09a/out';
 
 my @langs= qw(en de it fr);
 
@@ -92,11 +94,15 @@ else
 {
   open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
 }
+
 my $line= 0;
 my $t_start= time();
 
+mkdir ($data_dir) unless (-d $data_dir);
+mkdir ($out_dir)  unless (-d $out_dir);
+
 # item list
-my $fnm_items= 'items.csv';
+my $fnm_items= $data_dir . '/items.csv';
 
 local *FO_ITEMS;
 open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
@@ -186,17 +192,17 @@ sub open_fo
 
   if ($fo_compress == 1)
   {
-    $fo_fnm= sprintf ("out/wdq%05d.gz", ++$fo_count);
+    $fo_fnm= sprintf ("%s/wdq%05d.gz", $out_dir, ++$fo_count);
     open (FO_RECODED, '|-', "gzip -c >'$fo_fnm'") or die "can't write to [$fo_fnm]";
   }
   elsif ($fo_compress == 2)
   {
-    $fo_fnm= sprintf ("out/wdq%05d.cmp", ++$fo_count);
+    $fo_fnm= sprintf ("%s/wdq%05d.cmp", $out_dir, ++$fo_count);
     open (FO_RECODED, '>:raw', $fo_fnm) or die "can't write to [$fo_fnm]";
   }
   else
   {
-    $fo_fnm= sprintf ("out/wdq%05d", ++$fo_count);
+    $fo_fnm= sprintf ("%s/wdq%05d", $out_dir, ++$fo_count);
     open (FO_RECODED, '>:utf8', $fo_fnm) or die "can't write to [$fo_fnm]";
   }
 
@@ -427,7 +433,7 @@ close (FI);
 close_fo();
 
 # check if there are multiple definitions of the same property and flatten the structure a bit
-open (PROPS_LIST, '>:utf8', 'props.csv') or die;
+open (PROPS_LIST, '>:utf8', $data_dir . '/props.csv') or die;
 print PROPS_LIST join ($TSV_SEP, qw(prop def_cnt use_cnt datatype label_en descr_en)), "\n";
 
 my @prop_ids= sort { $a <=> $b } map { ($_ =~ m#^P(\d+)$#) ? $1 : undef } keys %props;
@@ -555,7 +561,7 @@ sub setup
       if ($property =~ m#^P\d+$#)
       {
         local *FO_Prop;
-        my $fnm_prop= $property . '.csv';
+        my $fnm_prop= $data_dir . '/' . $property . '.csv';
         if (open (FO_Prop, '>:utf8', $fnm_prop))
         {
           print FO_Prop join ($TSV_SEP, @$cols), "\n" if (defined ($cols));
