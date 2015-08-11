@@ -17,10 +17,10 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 my $LR_max_propid= 1930; # dump from 20150608
 
 # my $fnm= '20141215.json';
-my $fnm= 'dumps/20150805.json.gz';
+my $fnm= 'dumps/20150810.json.gz';
 # my $fnm= 'dumps/wikidata-20150608-all.json.gz';
-my $data_dir= 'data/2015-08-09a';
-my $out_dir= 'data/2015-08-09a/out';
+my $data_dir= 'data/2015-08-11a';
+my $out_dir= 'data/2015-08-11a/out';
 
 my @langs= qw(en de it fr);
 
@@ -163,7 +163,15 @@ my %filters=
   'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
   'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
 
+  # misc.
   'P625'  => wdpf ('P625', 'Geo Coordinates'),
+
+  # chemistry
+  'P233' => wdpf ('P233', 'SMILES'), # Simplified Molecular Input Line Entry Specification
+  'P234' => wdpf ('P234', 'InChI'),    # International Chemical Identifier
+  'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
+  'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
+  # note: there are olso Canonical SMILES, but no property for that yet
 );
 my @filters= sort keys %filters;
 
