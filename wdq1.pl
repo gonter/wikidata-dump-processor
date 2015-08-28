@@ -14,13 +14,13 @@ my $MAX_INPUT_LINES= undef;
 # my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
 
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
-my $LR_max_propid= 1930; # dump from 20150608
+# not used my $LR_max_propid= 1930; # dump from 20150608
 
 # my $fnm= '20141215.json';
-my $fnm= 'dumps/20150810.json.gz';
+my $fnm= 'dumps/20150824.json.gz';
 # my $fnm= 'dumps/wikidata-20150608-all.json.gz';
-my $data_dir= 'data/2015-08-11a';
-my $out_dir= 'data/2015-08-11a/out';
+my $data_dir= 'data/2015-08-26a';
+my $out_dir= 'data/2015-08-26a/out';
 
 my @langs= qw(en de it fr);
 
