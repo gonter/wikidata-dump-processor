@@ -20,9 +20,33 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # my $fnm= 'dumps/wikidata-20150608-all.json.gz';
 
 # TODO: make reasonable defaults and a command line option
-my $fnm= 'dumps/20150831.json.gz';
-my $data_dir= 'data/2015-08-31a';
-my $out_dir= 'data/2015-08-31a/out';
+sub get_paths
+{
+  my $date= shift;
+  my $seq= shift || 'a';
+
+  if ($date =~ m#^(\d{4})-?(\d{2})\-(\d{2})$#)
+  {
+    my ($yr, $mon, $day)= ($1, $2, $3);
+    my $d1= join ('-', $yr, $mon, $day. $seq);
+
+    my $fnm= join ('', 'dumps/', $yr, $mon, $day, '.json.gz');
+    my $data_dir= join ('/', 'data', $d1);
+    my $out_dir= join ('/', 'data', $d1, 'out');
+
+    return ($fnm, $data_dir, $out_dir);
+  }
+
+  die "invalid date format";
+}
+
+# my $fnm= 'dumps/20150831.json.gz';
+# my $data_dir= 'data/2015-08-31a';
+# my $out_dir= 'data/2015-08-31a/out';
+my $seq= 'a';
+my $date= '2015-08-31';
+my ($fnm, $data_dir, $out_dir)= get_paths ($date, $seq);
+my $upd_paths= 0;
 
 my @langs= qw(en de it fr);
 
@@ -34,11 +58,18 @@ my $fo_compress= 2;
 my @PARS= ();
 while (my $arg= shift (@ARGV))
 {
-  if ($arg eq '--') { push (@PARS, @ARGV); @ARGV=(); }
+     if ($arg eq '--') { push (@PARS, @ARGV); @ARGV=(); }
   elsif ($arg =~ /^--(.+)/)
   {
-    my ($an, $av)= split ($1, '=', 2);
-    usage();
+    my ($an, $av)= split ('=', $1, 2);
+    print "an=[$an] av=[$av]\n";
+
+       if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
+    else
+    {
+      usage();
+    }
   }
   elsif ($arg =~ /^-(.+)/)
   {
@@ -49,6 +80,8 @@ while (my $arg= shift (@ARGV))
   }
   else { push (@PARS, $arg); }
 }
+
+($fnm, $data_dir, $out_dir)= get_paths ($date, $seq) if ($upd_paths);
 
 sub usage
 {
@@ -62,6 +95,20 @@ if (@PARS)
 }
 
 usage() unless (defined ($fnm));
+
+my $e_start= time();
+my $ts_start= localtime ($e_start);
+
+print <<"EOX";
+WikiData processor
+
+date: $date
+dump file name: $fnm
+data dir: $data_dir
+item dir: $out_dir
+start_time: $ts_start
+-----------
+EOX
 
 analyze_dump ($fnm);
 
@@ -470,7 +517,7 @@ foreach my $prop_num (@prop_ids)
 }
 close (PROPS_LIST);
 
-open (PROPS, '>:utf8', 'props.json') or die;
+open (PROPS, '>:utf8', $data_dir . '/props.json') or die;
 print PROPS encode_json (\%props);
 close (PROPS);
 

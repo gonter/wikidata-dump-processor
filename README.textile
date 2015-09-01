@@ -2,39 +2,64 @@ h1. WikiData Dump Processor
 
 Processing JSON dumps from wikidata.org [1].
 
+h2. quick usage
+
+<pre>
+script
+./wdq1.pl --date 2015-08-31
+</pre>
+
+The script will run for several hours (2015-08-31 took 2.5 hours on my
+machine), so it might be useful to record log messages into a transcript
+file.
+
 h2. wdq1.pl
 
-Take gzipped dump file which is a gigantic JSON array and transcribe it element by element to a series of output files.
+Take gzipped dump file which is a gigantic JSON array and transcribe it
+element by element to a series of output files.
 
 * properties are kept in a JSON structure and dumped at the end as props.json
 * items are analyzed and filterd for properties of interes but are also transcribed into a series out output files called "out/wdq#####.cmp", just a bit larger than currently 500 MdB.
 * intersting information extracted by the filters mentioned above is written into a series of CSV files (tab separated):
+
 |_. filename |_. description |
 | items.csv | item catalog |
 | props.csv | property catalog |
 | P####.csv | filtered property #### |
+
+h3. out/wdq#####.cmp
+
+Each item as a JSON structure is compressed individually and written to
+this file.
 
 h3. CSV files
 
 h4. items.csv
 
 |_. column |_. label |_. note |
-|   0 | line            | |
-|   1 | pos             | |
-|   2 | fo_count        | |
-|   3 | fo_pos_beg      | |
-|   4 | fo_pos_end      | |
-|   5 | id              | |
-|   6 | type            | |
-|   7 | cnt_label       | |
-|   8 | cnt_desc        | |
-|   9 | cnt_aliases     | |
-|  10 | cnt_claims      | |
-|  11 | cnt_sitelink    | |
-|  12 | lang            | |
-|  13 | label           | |
-|  14 | filtered_props  | |
-|  15 | claims          | |
+|   0 | line            | input file line number |
+|   1 | pos             | input file begin byte position (within the decompressed stream) |
+|   2 | fo_count        | put/wdq file number |
+|   3 | fo_pos_beg      | out/wdq file begin position |
+|   4 | fo_pos_end      | out/wdq file end position |
+|   5 | id              | item ID |
+|   6 | type            | item type (should be always "item") |
+|   7 | cnt_label       | number of labels       |
+|   8 | cnt_desc        | number of descriptions |
+|   9 | cnt_aliases     | number of aliases      |
+|  10 | cnt_claims      | number of claims       |
+|  11 | cnt_sitelink    | number of sitelinks    |
+|  12 | lang            | primary language |
+|  13 | label           | label string in that primary language |
+|  14 | filtered_props  | list of properties recorded in P####.csv files |
+|  15 | claims          | complete list of properties |
+
+h5. lang and label
+
+Only one label is recorded, the first available language is selected from an ordered list:
+
+  my @langs= qw(en de it fr);
+
 
 h4. props.csv
 
@@ -67,8 +92,9 @@ h4. P####.csv
 
 h3. TODO
 
-* take date parameter as a commandline argument and derive other parameters from that
-* write props.json into the output directory
+* [X] take date parameter as a commandline argument and derive other parameters from that
+* [X] write props.json into the output directory
+* [_] fetch the dump from dumps server (check if file already exists or was changed)
 
 h2. Links
 
