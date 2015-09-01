@@ -19,8 +19,8 @@ Take gzipped dump file which is a gigantic JSON array and transcribe it
 element by element to a series of output files.
 
 * properties are kept in a JSON structure and dumped at the end as props.json
-* items are analyzed and filterd for properties of interes but are also transcribed into a series out output files called "out/wdq#####.cmp", just a bit larger than currently 500 MdB.
-* intersting information extracted by the filters mentioned above is written into a series of CSV files (tab separated):
+* items are analyzed and filterd for properties of interest but are also transcribed into a series out output files called "out/wdq#####.cmp", just a bit larger than currently 500 MdB each.
+* interesting information extracted by the filters mentioned above is written into a series of CSV files (tab separated):
 
 |_. filename |_. description |
 | items.csv | item catalog |
@@ -30,7 +30,7 @@ element by element to a series of output files.
 h3. out/wdq#####.cmp
 
 Each item as a JSON structure is compressed individually and written to
-this file.
+a file with this name pattern.  The positional information in the items and P-catalogs are intended for subsequent processing steps.
 
 h3. CSV files
 
@@ -64,12 +64,15 @@ Only one label is recorded, the first available language is selected from an ord
 h4. props.csv
 
 |_. column |_. label |_. note |
-|   0 | prop         | |
-|   1 | def_cnt      | |
-|   2 | use_cnt      | |
-|   3 | datatype     | |
-|   4 | label_en     | |
-|   5 | descr_en     | |
+|   0 | prop         | property ID |
+|   1 | def_cnt      | number of times this property was defined: should be 1 |
+|   2 | use_cnt      | number of times this property was used in claims in processed items |
+|   3 | datatype     | format of property values |
+|   4 | label_en     | property's english label |
+|   5 | descr_en     | property's english description |
+
+TODO:
+* [_] check if it makes sense to select a primary language for label and description.
 
 h4. P####.csv
 
@@ -88,13 +91,17 @@ h4. P####.csv
 |  11 | cnt_sitelink  | |
 |  12 | lang          | |
 |  13 | label         | |
-|  14 | val           | |
+|  14 | val           | item's property value |
+
+All other columns are the same as defined before under the heading "items.csv".
 
 h3. TODO
 
 * [X] take date parameter as a commandline argument and derive other parameters from that
 * [X] write props.json into the output directory
 * [_] fetch the dump from dumps server (check if file already exists or was changed)
+* [_] add code (which should go into a library) to retrieve selected items from wdq files
+* [_] add a section describing similar known projects
 
 h2. Links
 
