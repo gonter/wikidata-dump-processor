@@ -196,6 +196,10 @@ my %filters=
   'P236'  => wdpf ('P212', 'ISSN'),
   'P957'  => wdpf ('P957', 'ISBN-10'),
 
+  # arXiv.org
+  'P818'  => wdpf ('P818', 'arXiv ID'),
+  'P820'  => wdpf ('P818', 'arXiv classification'),
+
   # permanent identifiers
   'P356'  => wdpf ('P356',  'DOI'),
   'P1184' => wdpf ('P1184', 'Handle'),
@@ -221,6 +225,15 @@ my %filters=
   'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
   'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
   # note: there are olso Canonical SMILES, but no property for that yet
+
+  'P248'  => wdpf ('P248', 'stated in'),
+  'P577'  => wdpf ('P577', 'publication date'),
+
+  # classification
+  'P225' => wdpf ('P225', 'taxon name'),
+
+  # astronomy
+  'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
 );
 my @filters= sort keys %filters;
 
