@@ -9,7 +9,8 @@ use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
 my $TSV_SEP= "\t";
-my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
+# my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
+my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
 my $MAX_INPUT_LINES= undef;
 # my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
 
@@ -189,6 +190,7 @@ my %filters=
   # personal data?
   'P569'  => wdpf ('P569', 'Date of birth'),
   'P570'  => wdpf ('P570', 'Date of death'),
+  'P2298' => wdpf ('P2298', 'NSDAP membership number (1925-1945)'),
 
   # publications
   'P345'  => wdpf ('P345', 'IMDb identifier'),
@@ -198,7 +200,7 @@ my %filters=
 
   # arXiv.org
   'P818'  => wdpf ('P818', 'arXiv ID'),
-  'P820'  => wdpf ('P818', 'arXiv classification'),
+  'P820'  => wdpf ('P820', 'arXiv classification'),
 
   # permanent identifiers
   'P356'  => wdpf ('P356',  'DOI'),
@@ -234,6 +236,11 @@ my %filters=
 
   # astronomy
   'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
+
+  # Software
+  'P1072' => wdpf ('P1072' => 'readable file format'),
+  'P1073' => wdpf ('P1073' => 'writable file format'),
+  'P1195' => wdpf ('P1195' => 'file extension'),
 );
 my @filters= sort keys %filters;
 
