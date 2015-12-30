@@ -8,6 +8,10 @@ use Compress::Zlib;
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
+use lib 'lib';
+use WikiData::Utils;
+use WikiData::Property::Filter;
+
 my $TSV_SEP= "\t";
 # my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
 my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
@@ -17,36 +21,9 @@ my $MAX_INPUT_LINES= undef;
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
-# my $fnm= '20141215.json';
-# my $fnm= 'dumps/wikidata-20150608-all.json.gz';
-
-# TODO: make reasonable defaults and a command line option
-sub get_paths
-{
-  my $date= shift;
-  my $seq= shift || 'a';
-
-  if ($date =~ m#^(\d{4})-?(\d{2})\-(\d{2})$#)
-  {
-    my ($yr, $mon, $day)= ($1, $2, $3);
-    my $d1= join ('-', $yr, $mon, $day. $seq);
-
-    my $fnm= join ('', 'dumps/', $yr, $mon, $day, '.json.gz');
-    my $data_dir= join ('/', 'data', $d1);
-    my $out_dir= join ('/', 'data', $d1, 'out');
-
-    return ($fnm, $data_dir, $out_dir);
-  }
-
-  die "invalid date format";
-}
-
-# my $fnm= 'dumps/20150831.json.gz';
-# my $data_dir= 'data/2015-08-31a';
-# my $out_dir= 'data/2015-08-31a/out';
 my $seq= 'a';
-my $date= '2015-08-31';
-my ($fnm, $data_dir, $out_dir)= get_paths ($date, $seq);
+my $date= '2015-12-28'; # maybe a config file is in order to set up the defaults...
+my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
 my @langs= qw(en de it fr);
@@ -82,7 +59,7 @@ while (my $arg= shift (@ARGV))
   else { push (@PARS, $arg); }
 }
 
-($fnm, $data_dir, $out_dir)= get_paths ($date, $seq) if ($upd_paths);
+($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq) if ($upd_paths);
 
 sub usage
 {
@@ -168,7 +145,9 @@ sub wdpf
   my $label= shift;
   my $transform= shift;
 
-  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform);
+  my $fnm_prop= $data_dir . '/' . $prop . '.csv';
+
+  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform, 'filename' => $fnm_prop);
 }
 
 my %filters=
@@ -206,6 +185,10 @@ my %filters=
   'P356'  => wdpf ('P356',  'DOI'),
   'P1184' => wdpf ('P1184', 'Handle'),
   'P727'  => wdpf ('P727',  'Europeana ID'),
+  'P1036' => wdpf ('P1036', 'Dewey Decimal Classification'),
+  'P563'  => wdpf ('P563',  'ICD-O'),
+
+  'P1709' => wdpf ('P1709', 'equivalent class'),
 
   # getty
   'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
@@ -226,7 +209,7 @@ my %filters=
   'P234' => wdpf ('P234', 'InChI'),    # International Chemical Identifier
   'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
   'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
-  # note: there are olso Canonical SMILES, but no property for that yet
+  # note: there are also Canonical SMILES, but no property for that yet
 
   'P248'  => wdpf ('P248', 'stated in'),
   'P577'  => wdpf ('P577', 'publication date'),
@@ -594,117 +577,4 @@ sub counter
   foreach my $x (@s) { $a->{$x}++; }
   $c_s;
 }
-
-package WikiData::Property::Filter;
-
-sub new
-{
-  my $class= shift;
-  my %par= @_;
-
-  my $obj= {};
-  bless $obj, $class;
-  $obj->set (%par);
-  $obj->setup();
-
-  $obj;
-}
-
-sub set
-{
-  my $obj= shift;
-  my %par= @_;
-
-  foreach my $par (keys %par)
-  {
-    if (defined ($par{$par}))
-    {
-      $obj->{$par}= $par{$par};
-    }
-    else
-    {
-      delete($obj->{$par});
-    }
-  }
-}
-
-sub setup
-{
-  my $obj= shift;
-
-  my ($property, $cols, $label)= map { $obj->{$_} } qw(property cols label); 
-  my $res= undef;
-
-      if ($property =~ m#^P\d+$#)
-      {
-        local *FO_Prop;
-        my $fnm_prop= $data_dir . '/' . $property . '.csv';
-        if (open (FO_Prop, '>:utf8', $fnm_prop))
-        {
-          print FO_Prop join ($TSV_SEP, @$cols), "\n" if (defined ($cols));
-          print "writing filter [$property] [$label] to [$fnm_prop]\n";
-          $obj->{'_FO'}= *FO_Prop;
-          $res= 1;
-        }
-        else
-        {
-          print "can not write to [$fnm_prop]\n";
-        }
-      }
-      else
-      {
-        print "ATTN: invalid property format [$property]; ignored\n";
-        $res= -1
-      }
-
-  $res;
-}
-
-sub extract
-{
-  my $fp= shift;
-  my $x= shift;
-
-  my $y;
-
-  if ($fp->{'transform'} == 1 && ref ($x) eq 'HASH')
-  {
-    my $et;
-    if ($x->{'entity-type'} eq 'item') { $et= 'Q'; }
-    elsif ($x->{'entity-type'} eq 'property') { $et= 'P'; }
-    $y= $et . $x->{'numeric-id'} if (defined ($et));
-  }
-  elsif (ref ($x) eq 'HASH')
-  {
-    $y= JSON::encode_json ($x);
-  }
-  else
-  {
-    $y= $x;
-  }
-
-  $y;
-}
-
-__END__
-=begin comment
-
-    'mainsnak' => {
-      'property' => 'P625',
-      'datatype' => 'globe-coordinate',
-      'snaktype' => 'value',
-      'datavalue' => {
-        'value' => {
-          'globe' => 'http://www.wikidata.org/entity/Q2', -- Earth!
-          'precision' => '0.00027777777777778',
-          'longitude' => '-73.563530555556',
-          'latitude' => '45.510127777778',
-          'altitude' => undef
-        },
-        'type' => 'globecoordinate'
-      }
-    },
-
-=end comment
-=cut
 
