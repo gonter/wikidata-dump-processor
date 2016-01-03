@@ -3,6 +3,7 @@ out/
 data/
 @*
 *.tys
+*.items
 items.csv
 props.csv
 props.saved.csv
