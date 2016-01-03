@@ -21,7 +21,8 @@ my $seq= 'a';
 my $date= '2015-12-28';
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 
-my $op_mode= 'find_items';
+# my $op_mode= 'find_items';
+my $op_mode= 'get_items';
 
 my $upd_paths= 0;
 
@@ -67,11 +68,19 @@ print "fi_open=[$fi_open]\n";
 $csv->{'__FI'}= *FI;
 $csv->load_csv_file_headings (*FI);
 
+  my $rec_size= 32;
+  my $pds= new PDS (rec_size => $rec_size);
+  print "pds: ", Dumper ($pds);
 
 if ($op_mode eq 'find_items')
 {
   usage() unless (@PARS);
   find_items($csv, \@PARS);
+}
+elsif ($op_mode eq 'get_items')
+{
+  usage() unless (@PARS);
+  get_items($csv, \@PARS);
 }
 elsif ($op_mode eq 'scan')
 {
@@ -120,15 +129,11 @@ sub parse_idx_file
   }
 
   # designed/optimized values
-  my $rec_size= 32;
   # my $page_block_factor= 4; # this is guess work; try to avoid skipping around
 
   # my $page_size= 1024*$rec_size*$page_block_factor;
   # my $page_size= 4*1024*1024; # 4 MByte blocks, depending on fileystem layout
   # my $page_hdr_size= 1024;
-
-  my $pds= new PDS (rec_size => $rec_size);
-  print "pds: ", Dumper ($pds);
 
   # statistics
   LINE: while (<F_in>)
@@ -154,7 +159,7 @@ sub parse_idx_file
     }
 
     my $rec_s= pack ('LLLLLLLL', $rec_num, $pos_idx, $f_num, $beg, $end, 0, 0, 0);
-    my ($pdsp, $rel_rec_num, $rel_rec_pos)= $pds->store ($rec_num, $rec_s);
+    $pds->store ($rec_num, $rec_s);
 
     next LINE;
 
@@ -244,6 +249,61 @@ sub find_items
   return $cnt_items;
 }
 
+sub get_items
+{
+  my $csv= shift;   # NOTE: the csv file is not used in this mode!
+  my $pars= shift;
+
+  unless (defined ($pars) && @$pars)
+  {
+    print "no items specified\n";
+    return undef;
+  }
+
+  $pds->{do_read}= 1;
+
+  my @rec_nums=();
+  foreach my $item (@$pars)
+  {
+    if ($item =~ m#^Q(\d+)$#)
+    {
+      push (@rec_nums, $1);
+    }
+  }
+
+  my $cnt_items= 0;
+  foreach my $rec_num (sort @rec_nums)
+  {
+    my $data= $pds->retrieve ($rec_num);
+    # main::hexdump ($data);
+    my ($x_rec_num, $pos_idx, $f_num, $beg, $end, @x)= unpack ('LLLLLLLL', $data);
+
+    # recreate most importent parts of one row from items.csv 
+    my $row=
+    {
+      id         => 'Q'.$x_rec_num,
+      fo_count   => $f_num,
+      fo_pos_beg => $beg,
+      fo_pos_end => $end,
+    };
+
+    if ($x_rec_num > 0)
+    {
+      load_item ($row); # TODO: check for errors etc.
+      $cnt_items++;
+    }
+    else
+    {
+      print "item not found in index\n";
+      print "rec_num=[$rec_num] x_rec_num=[$x_rec_num] pos_idx=[$pos_idx] f_num=[$f_num] beg=[$beg] end=[$end]\n";
+    }
+
+  }
+
+
+  return $cnt_items;
+}
+
 sub usage
 {
   system ('perldoc', $0);
@@ -319,7 +379,7 @@ sub new
   # print "recs_per_page=[$recs_per_page]\n"; exit;
 
   local *FPDS;
-  unless (open (FPDS, '+>:raw', $self->{backing_file}))
+  unless (open (FPDS, '+<:raw', $self->{backing_file}))
   {
     die "can not create paging backing file [$self->{backing_file}]";
   }
@@ -346,6 +406,22 @@ sub store
 
   my ($pdsp, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
   $pdsp->{dirty}->[$rel_rec_num]= $b;
+}
+
+sub retrieve
+{
+  my $self= shift;
+  my $rec_num= shift;
+  my $b= shift;
+
+  my ($pdsp, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
+  return undef unless (defined ($pdsp));
+  # print "pdsp: ", main::Dumper($pdsp);
+  print "pdsp: rec_num=[$rec_num] page_num=[$pdsp->{page_num}] rel_rec_num=[$rel_rec_num] rel_rec_pos=[$rel_rec_pos]\n";
+  my $d= substr ($pdsp->{buffer}, $rel_rec_pos, $self->{rec_size});
+  print "d:\n";
+  main::hexdump ($d);
+  $d;
 }
 
 sub get_page_by_rec_num
@@ -453,15 +529,7 @@ sub load_page
     'buffer' => '',
   };
 
-  unless (defined ($self->{page_hits}->[$page_num]))
-  {
-    # print "TODO: create new page_num=[$page_num]\n";
-    # print "total=[$cnt_total] highst_page_num changes from $highest_page_num to $page_num\n";
-
-    # $self->{highest_page_num}= $page_num;
-    $self->{page_hits}->[$page_num]= 1;
-  }
-  else
+  if ($self->{do_read} || defined ($self->{page_hits}->[$page_num]))
   {
     # print "TODO: loading page data page_num=[$page_num]\n";
     $self->{page_hits}->[$page_num]++;
@@ -478,6 +546,14 @@ sub load_page
       die "ERROR saving page page_num=[$page_num] bc=[$bc] page_size=[$page_size]\n";
     }
     $new_page->{buffer}= $new_buffer;
+  }
+  else
+  {
+    # print "TODO: create new page_num=[$page_num]\n";
+    # print "total=[$cnt_total] highst_page_num changes from $highest_page_num to $page_num\n";
+
+    # $self->{highest_page_num}= $page_num;
+    $self->{page_hits}->[$page_num]= 1;
   }
 
   $self->{last_page}= $new_page;
