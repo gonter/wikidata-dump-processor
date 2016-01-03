@@ -272,7 +272,7 @@ sub get_items
   }
 
   my $cnt_items= 0;
-  foreach my $rec_num (sort @rec_nums)
+  foreach my $rec_num (sort { $a <=> $b } @rec_nums)
   {
     my $data= $pds->retrieve ($rec_num);
     # main::hexdump ($data);
