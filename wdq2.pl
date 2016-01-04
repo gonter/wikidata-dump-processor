@@ -19,7 +19,7 @@ use WikiData::Utils;
 use PDS;
 
 my $seq= 'a';
-my $date= '2015-12-28';
+my $date= '2016-01-04';
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 
 # my $op_mode= 'find_items';
@@ -62,16 +62,21 @@ my $fnm_items= join ('/', $data_dir, 'items.csv');
 
 my $csv= new Util::Simple_CSV (separator => "\t");
 
-local *FI;
+local *FI_csv;
 my $fi_open;
-(*FI, $fi_open)= $csv->open_csv_file ($fnm_items);
-print "fi_open=[$fi_open]\n";
-$csv->{'__FI'}= *FI;
-$csv->load_csv_file_headings (*FI);
+unless ($op_mode eq 'get_items')
+{
+  (*FI_csv, $fi_open)= $csv->open_csv_file ($fnm_items);
+  # print "fi_open=[$fi_open]\n";
+  $csv->{'__FI'}= *FI_csv;
+  $csv->load_csv_file_headings (*FI_csv);
+}
 
+  # paged data store for record index
+  my $fnm_rec_idx= join ('/', $data_dir, 'records.idx');
   my $rec_size= 32;
-  my $pds= new PDS (rec_size => $rec_size);
-  print "pds: ", Dumper ($pds);
+  my $pds= new PDS (rec_size => $rec_size, backing_file => $fnm_rec_idx);
+  # print "pds: ", Dumper ($pds);
 
 if ($op_mode eq 'find_items')
 {
@@ -89,6 +94,8 @@ elsif ($op_mode eq 'scan')
 }
 else { usage(); }
 
+close (FI_csv) if ($fi_open);
+
 exit(0);
 
 sub scan_items
@@ -96,23 +103,20 @@ sub scan_items
   my $csv= shift;
 
   my $index= $csv->{'index'};
-  print "index: ", Dumper ($index);
+  # print "index: ", Dumper ($index);
+
   my ($idx_id, $idx_fo_num, $idx_pos_beg, $idx_pos_end)= map { $index->{$_} } qw(id fo_count fo_pos_beg fo_pos_end);
   print "idx_id=[$idx_id] idx_fo_num=[$idx_fo_num] idx_pos_beg=[$idx_pos_beg] idx_pos_end=[$idx_pos_end]\n";
 
   my $columns= $csv->{'columns'};
-  print "columns: ", Dumper ($columns);
+  # print "columns: ", Dumper ($columns);
 
-  open (FO, '>:utf8', '@rogues.tsv');
-  print FO join ("\t", @$columns), "\n";
-
-  parse_idx_file ($csv->{'__FI'}, *FO, $idx_id, $idx_fo_num, $idx_pos_beg, $idx_pos_end);
+  parse_idx_file ($csv->{'__FI'}, $idx_id, $idx_fo_num, $idx_pos_beg, $idx_pos_end);
 }
 
 sub parse_idx_file
 {
   local *F_in= shift;
-  local *F_rogues= shift;
 
   my $idx_id= shift;
   my $idx_fo_num= shift;
@@ -123,10 +127,10 @@ sub parse_idx_file
 
   my $last_rec_num= 0; # there is no Q0
 
-  my ($cnt_total, $cnt_invalid, $cnt_ordered, $cnt_rogue)= (0, 0, 0, 0);
+  my ($cnt_total, $cnt_invalid, $cnt_ordered)= (0, 0, 0);
   sub print_stats
   {
-    print "statistics: total=[$cnt_total] invalid=[$cnt_invalid] ordered=[$cnt_ordered] rogue=[$cnt_rogue]\n";
+    print "statistics: total=[$cnt_total] invalid=[$cnt_invalid] ordered=[$cnt_ordered]\n";
   }
 
   # designed/optimized values
@@ -163,36 +167,6 @@ sub parse_idx_file
     $pds->store ($rec_num, $rec_s);
 
     next LINE;
-
-=begin comment
-
-That's not a good metric for estimating orderedness
-
-statistics: total=[2700000] invalid=[0] ordered=[2700000] rogue=[0]
-ROGUE: total=[2757300] last_rec_num=[12464824] rec_num=[12466169]
-
-    # print "f: ", Dumper(\@f);
-    if ($rec_num > $last_rec_num
-        # && $rec_num <= $last_rec_num + 10_000
-       )
-    { # normal order
-      $cnt_ordered++;
-      print_stats() if (($cnt_ordered % 100_000) == 0);
-      $last_rec_num= $rec_num;
-    }
-    else
-    { # misordered items in the stream
-      print "ROGUE: total=[$cnt_total] last_rec_num=[$last_rec_num] rec_num=[$rec_num]\n";
-      $last_rec_num= $rec_num;
-      # print F_rogues join ("\t", @f), "\n";
-      $cnt_rogue++;
-      print_stats() if (($cnt_rogue % 100) == 0);
-
-      # last LINE if ($cnt_rogue >= 5);
-    }
-
-=end comment
-=cut
 
     # print "id=[$id] rec_num=[$rec_num] pos_idx=[$pos_idx] f_num=[$f_num] beg=[$beg] end=[$end]\n";
   }
@@ -232,9 +206,10 @@ sub find_items
     return (exists ($IDS{$row->[$idx_id]})) ? 1 : 0;
   }
 
+  local *FI_csv= $csv->{'__FI'};
   $csv->set ( filter => \&filter, max_items => scalar @PARS);
-  $csv->load_csv_file_body (*FI);
-  close (FI);
+  $csv->load_csv_file_body (*FI_csv);
+  close (FI_csv);
 
   print "csv: ", Dumper ($csv);
 
@@ -315,7 +290,7 @@ sub load_item
 {
   my $row= shift;
 
-  print "row: ", Dumper ($row);
+  # print "row: ", Dumper ($row);
   
   my ($id, $f_num, $beg, $end)= map { $row->{$_} } qw(id fo_count fo_pos_beg fo_pos_end);
   my $size= $end-$beg;

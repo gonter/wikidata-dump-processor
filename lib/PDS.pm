@@ -57,10 +57,15 @@ sub new
   # print "recs_per_page=[$recs_per_page]\n"; exit;
 
   local *FPDS;
-  unless (open (FPDS, '+<:raw', $self->{backing_file}))
+  my $bf= $self->{backing_file};
+  my $bf_mode= (-f $bf) ? '+<:raw' : '+>:raw';
+
+  unless (open (FPDS, $bf_mode, $bf))
   {
-    die "can not create paging backing file [$self->{backing_file}]";
+    die "can not create paging backing file [$self->{backing_file}] in mode [$bf_mode]";
+    # TODO: do not die here...
   }
+  print "opened paging backing file [$self->{backing_file}] in mode [$bf_mode]\n";
   $self->{__FPDS__}= *FPDS;
 
   $self;
@@ -95,10 +100,11 @@ sub retrieve
   my ($pdsp, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
   return undef unless (defined ($pdsp));
   # print "pdsp: ", main::Dumper($pdsp);
-  print "pdsp: rec_num=[$rec_num] page_num=[$pdsp->{page_num}] rel_rec_num=[$rel_rec_num] rel_rec_pos=[$rel_rec_pos]\n";
+  # print "pdsp: rec_num=[$rec_num] page_num=[$pdsp->{page_num}] rel_rec_num=[$rel_rec_num] rel_rec_pos=[$rel_rec_pos]\n";
   my $d= substr ($pdsp->{buffer}, $rel_rec_pos, $self->{rec_size});
-  print "d:\n";
-  main::hexdump ($d);
+
+  # print "d:\n"; main::hexdump ($d);
+
   $d;
 }
 
