@@ -332,7 +332,7 @@ sub flush_page
   {
     print "ERROR saving page page_num=[$page_num] bc=[$bc] page_size=[$page_size]\n";
   }
-  print "NOTE: saved page page_num=[$page_num] cnt_dirty=[$cnt_dirty] cnt_buffer=[$cnt_buffer] cnt_fillter=[$cnt_filler]\n";
+  print "NOTE: saved page page_num=[$page_num] cnt_dirty=[$cnt_dirty] cnt_buffer=[$cnt_buffer] cnt_filler=[$cnt_filler]\n";
 
   $self->{page}= undef;
   $self->{last_page_num}= -1;
