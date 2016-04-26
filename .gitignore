@@ -1,6 +1,7 @@
 dumps/
 out/
 data/
+tmp/
 @*
 *.tys
 *.items
@@ -18,3 +19,4 @@ P*.csv
 Q*
 PDS_backing.pages
 latest
+index.html
