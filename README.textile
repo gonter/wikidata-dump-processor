@@ -103,7 +103,20 @@ h3. TODO
 * [_] add code (which should go into a library) to retrieve selected items from wdq files
 * [_] add a section describing similar known projects
 
+h2. Wikitionary
+
+fetch dumps from [2] and [3] and possibly other wiktionaries
+
 h2. Links
 
 * [1] https://dumps.wikimedia.org/other/wikidata/
+* [2] https://dumps.wikimedia.org/enwiktionary/
+* [3] https://dumps.wikimedia.org/dewiktionary/
+
+h3. Todo: add a way to get the proper date
+
+<pre>
+wget https://dumps.wikimedia.org/enwiktionary/20160801/enwiktionary-20160801-pages-meta-current.xml.bz2
+wget https://dumps.wikimedia.org/dewiktionary/20160801/dewiktionary-20160801-pages-meta-current.xml.bz2
+</pre>
 
