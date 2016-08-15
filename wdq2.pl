@@ -19,7 +19,7 @@ use WikiData::Utils;
 use PDS;
 
 my $seq= 'a';
-my $date= '2016-01-04';
+my $date= '2016-07-04';
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 
 # my $op_mode= 'find_items';
@@ -58,6 +58,9 @@ while (my $arg= shift (@ARGV))
 
 # prepare items list
 ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq) if ($upd_paths);
+# print __LINE__, " date=[$date] seq=[$seq] data_dir=[$data_dir]\n";
+# TODO: fails if there is no data at the given date/seq
+
 my $fnm_items= join ('/', $data_dir, 'items.csv');
 
 my $csv= new Util::Simple_CSV (separator => "\t");
@@ -246,6 +249,7 @@ sub get_items
       push (@rec_nums, $1);
     }
   }
+  # print __LINE__, " recs: ", join (' ', @rec_nums), "\n";
 
   my $cnt_items= 0;
   foreach my $rec_num (sort { $a <=> $b } @rec_nums)
