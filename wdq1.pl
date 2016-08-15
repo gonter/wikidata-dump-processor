@@ -190,10 +190,12 @@ my %filters=
 
   'P1709' => wdpf ('P1709', 'equivalent class'),
 
-  # getty
+  # Getty
   'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
   'P1014' => wdpf ('P1014', 'AAT identifier'),  # Art & Architecture Thesaurus by the Getty Research Institute
   'P1667' => wdpf ('P1667', 'TGN identifier'),  # Getty Thesaurus of Geographic Names
+  'P2432' => wdpf ('P2432', 'J. Paul Getty Museum artist id'), # identifier assigned to an artist by the J. Paul Getty Museum
+  'P2582' => wdpf ('P2582', 'J. Paul Getty Museum object id'),
 
   # MusicBrainz
   'P434'  => wdpf ('P434', 'MusicBrainz artist id'),
