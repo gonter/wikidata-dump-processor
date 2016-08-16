@@ -16,11 +16,14 @@ use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
 use WikiData::Utils;
+use Wiktionary::Utils;
 use PDS;
 
 my $seq= 'a';
 my $date= '2016-07-04';
+my $lang= undef;
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
+my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
@@ -40,6 +43,7 @@ while (my $arg= shift (@ARGV))
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'lang') { $lang=  $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'scan')  { $op_mode= 'scan'; }
     else
     {
@@ -57,11 +61,25 @@ while (my $arg= shift (@ARGV))
 }
 
 # prepare items list
-($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq) if ($upd_paths);
+my $fnm_items;
+if ($upd_paths)
+{
+  if (defined ($lang))
+  { # must be Wiktionary, if there is a language defined ...
+    ($fnm, $data_dir, $out_dir)= Wiktionary::Utils::get_paths ($lang, $date, $seq);
+    print "ATTN: wiktionary mode!\n";
+    $fnm_items= join ('/', $data_dir, "items.csv");
+    $cmp_fnm_pattern= '%s/wkt%05d.cmp';
+  }
+  else
+  {
+    ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
+    $fnm_items= join ('/', $data_dir, 'items.csv');
+  }
+}
 # print __LINE__, " date=[$date] seq=[$seq] data_dir=[$data_dir]\n";
 # TODO: fails if there is no data at the given date/seq
 
-my $fnm_items= join ('/', $data_dir, 'items.csv');
 
 my $csv= new Util::Simple_CSV (separator => "\t");
 
@@ -156,7 +174,11 @@ sub parse_idx_file
 
     my $rec_num;
     if ($id =~ m#^Q(\d+)$#)
-    {
+    { # Wikidata
+      $rec_num= $1;
+    }
+    elsif ($id =~ m#^(\d+)$#)
+    { # Wiktionary
       $rec_num= $1;
     }
     else
@@ -248,6 +270,10 @@ sub get_items
     {
       push (@rec_nums, $1);
     }
+    elsif ($item =~ m#^(\d+)$#)
+    {
+      push (@rec_nums, $1);
+    }
   }
   # print __LINE__, " recs: ", join (' ', @rec_nums), "\n";
 
@@ -298,7 +324,7 @@ sub load_item
   
   my ($id, $f_num, $beg, $end)= map { $row->{$_} } qw(id fo_count fo_pos_beg fo_pos_end);
   my $size= $end-$beg;
-  my $fnm_data= sprintf ('%s/wdq%05d.cmp', $out_dir, $row->{'fo_count'});
+  my $fnm_data= sprintf ($cmp_fnm_pattern, $out_dir, $row->{'fo_count'});
 
   print "id=[$id] f_num=[$f_num] fnm_data=[$fnm_data] beg=[$beg] end=[$end] size=[$size]\n";
 
@@ -306,11 +332,23 @@ sub load_item
   seek (FD, $beg, 0);
   my $buffer;
   sysread (FD, $buffer, $size);
-  my $json= uncompress ($buffer);
-  # print "json: ", Dumper ($json);
-  my $data= JSON::decode_json ($json);
-  print "data: ", Dumper ($data);
+  my $block= uncompress ($buffer);
+  # print "block: ", Dumper ($block);
 
-  $data;
+  if (defined ($lang))
+  {
+    # print "buffer: ", Dumper ($buffer);
+    # print "block: ", Dumper (\$block);
+    print '='x72, "\n", "block:\n", $block, "\n", '='x72, "\n";
+
+    return $block;
+  }
+  else
+  {
+    my $json= JSON::decode_json ($block);
+    print "json: ", Dumper ($json);
+
+    return $json;
+  }
 }
 

@@ -3,14 +3,16 @@
 use strict;
 
 use JSON;
-use Compress::Zlib;
 
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
+use FileHandle;
 
 use lib 'lib';
 use WikiData::Utils;
 use WikiData::Property::Filter;
+
+use FDS;
 
 my $TSV_SEP= "\t";
 # my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
@@ -113,10 +115,12 @@ my %props;
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks);
 
+# local *FI= wkutils::open_input($fnm);
 if ($fnm =~ /\.gz$/)
 {
   open (FI, '-|', "gunzip -c '$fnm'") or die "can't gunzip [$fnm]";
 }
+# elsif bunzip ... see wkt1
 else
 {
   open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
@@ -125,8 +129,16 @@ else
 my $line= 0;
 my $t_start= time();
 
-mkdir ($data_dir) unless (-d $data_dir);
-mkdir ($out_dir)  unless (-d $out_dir);
+unless (-d $data_dir)
+{
+  print "mkdir $data_dir\n";
+  mkdir ($data_dir);
+}
+unless (-d $out_dir)
+{
+  print "mkdir $out_dir\n";
+  mkdir ($out_dir)
+}
 
 # item list
 my $fnm_items= $data_dir . '/items.csv';
@@ -135,6 +147,7 @@ local *FO_ITEMS;
 open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
 my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
 print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
+autoflush FO_ITEMS 1;
 
 # properties
 my @cols_filt= (@cols1, 'val');
@@ -229,55 +242,6 @@ my %filters=
 );
 my @filters= sort keys %filters;
 
-# BEGIN output transcription
-local *FO_RECODED;
-my $fo_open= 0;
-my $fo_count= 0;
-my $fo_pos= 0;
-
-
-sub close_fo
-{
-  if ($fo_open)
-  {
-    # print FO_RECODED "]\n";
-    close (FO_RECODED);
-    $fo_open= 0;
-  }
-}
-
-sub open_fo
-{
-  close_fo();
-
-  my $fo_fnm;
-
-  if ($fo_compress == 1)
-  {
-    $fo_fnm= sprintf ("%s/wdq%05d.gz", $out_dir, ++$fo_count);
-    open (FO_RECODED, '|-', "gzip -c >'$fo_fnm'") or die "can't write to [$fo_fnm]";
-  }
-  elsif ($fo_compress == 2)
-  {
-    $fo_fnm= sprintf ("%s/wdq%05d.cmp", $out_dir, ++$fo_count);
-    open (FO_RECODED, '>:raw', $fo_fnm) or die "can't write to [$fo_fnm]";
-  }
-  else
-  {
-    $fo_fnm= sprintf ("%s/wdq%05d", $out_dir, ++$fo_count);
-    open (FO_RECODED, '>:utf8', $fo_fnm) or die "can't write to [$fo_fnm]";
-  }
-
-  $fo_open= 1;
-
-  print "writing dumps to $fo_fnm\n";
-  # print FO_RECODED "[\n";
-  $fo_pos= tell (FO_RECODED);
-}
-# END output transcription
-
-open_fo();
-
 # Property Bitmap Table
 my @id_prop= (); # bitmap table
 my $max_id= -1;
@@ -290,6 +254,10 @@ if ($exp_bitmap)
   open (BM_FILE, '>:raw', $BM_file) or die "can't write to [$BM_file]\n";
 }
 
+my $fo_rec= new FDS('out_pattern' => "$out_dir/wdq%05d");
+my $fo_count= $fo_rec->open();
+my $fo_pos= 0;
+
 <FI>;
 my $pos;
 LINE: while (1)
@@ -300,9 +268,10 @@ LINE: while (1)
 
   if ($fo_pos >= $OUT_CHUNK_SIZE)
   {
-    open_fo();
+    $fo_count= $fo_rec->open();
+    $fo_pos= 0;
   }
-  $fo_pos= tell(FO_RECODED);
+  $fo_pos= $fo_rec->tell();
 
   $line++;
   print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 10_000) == 0);
@@ -364,16 +333,8 @@ LINE: while (1)
   }
 
   # my $py= substr($l, 0, 30) . '...' . substr ($l, -30);
-  my $px;
-  if ($fo_compress == 2)
-  {
-    $px= print FO_RECODED compress($l);
-  }
-  else
-  {
-    $px= print FO_RECODED $l, "\n";
-  }
-  my $fo_pos_end= tell (FO_RECODED);
+  my $px= $fo_rec->print($l);
+  my $fo_pos_end= $fo_rec->tell();
   # print "px=[$px] l=[$py]\n";
 
   foreach my $a (keys %$j) { $attrs{$a}++; }
@@ -492,7 +453,7 @@ LINE: while (1)
 }
 
 close (FI);
-close_fo();
+$fo_rec->close();
 
 # check if there are multiple definitions of the same property and flatten the structure a bit
 open (PROPS_LIST, '>:utf8', $data_dir . '/props.csv') or die;

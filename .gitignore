@@ -1,6 +1,7 @@
 dumps/
 out/
 data/
+wkt-??/
 tmp/
 @*
 *.tys

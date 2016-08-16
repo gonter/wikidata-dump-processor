@@ -6,6 +6,7 @@ use JSON;
 use FileHandle;
 
 use Util::JSON;
+use Util::Simple_CSV;
 
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
@@ -19,8 +20,8 @@ use FDS;
 my $TSV_SEP= "\t";
 # my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
 my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
-# my $MAX_INPUT_LINES= undef;
-# not used! my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
+my $MAX_INPUT_LINES= undef;
+# my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
 
 my $lang= 'de';
 my $seq= 'a';
@@ -242,11 +243,21 @@ LINE: while (1)
 
     # statistics
     $ns{$frame{ns}}->{use_count}++;
+
+    last if (defined ($MAX_INPUT_LINES) && $line > $MAX_INPUT_LINES);
   }
 }
 
-  my $fnm_ns= join ('/', $data_dir, 'namespaces.json');
-  print "saving namespaces to [$fnm_ns]\n";
-  Util::JSON::write_json_file ($fnm_ns, \%ns);
+  my $fnm_ns_json= join ('/', $data_dir, 'namespaces.json');
+  my $fnm_ns_csv= join ('/', $data_dir, 'namespaces.csv');
+  print "saving namespaces to [$fnm_ns_json]\n";
+  Util::JSON::write_json_file ($fnm_ns_json, \%ns);
 
+  my @ns= map { $ns{$_} } sort { $a <=> $b } keys %ns;
+  my $csv= new Util::Simple_CSV ('separator' => "\t", 'no_array' => 1);
+  $csv->define_columns (qw(ns_id use_count ns_case ns_name));
+  $csv->{data}= \@ns;
+  $csv->save_csv_file(filename => $fnm_ns_csv);
+
+  1;
 }

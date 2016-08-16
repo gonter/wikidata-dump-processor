@@ -1,7 +1,7 @@
 
-use strict;
-
 package WikiData::Utils;
+
+use strict;
 
 # TODO: make reasonable defaults and a command line option
 sub get_paths
