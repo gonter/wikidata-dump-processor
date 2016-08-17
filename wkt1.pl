@@ -139,6 +139,7 @@ my %ns;
 my @lines;
 my %frame;
 my @text;
+my %cnt_ATTN= 0;
 LINE: while (1)
 {
   $pos= tell(FI);
@@ -162,7 +163,7 @@ LINE: while (1)
   print ">> [$state] [$l]\n" if ($debug > 1);
   if ($state == 0)
   {
-    if ($l =~ m#^\s*<namespace key="([\-\d]+)" case="([^"]+)">([^"]+)</namespace>#)
+    if ($l =~ m#^\s*<namespace key="([\-\d]+)" case="([^"]+)">([^"]*)</namespace>#)
     {
       my $ns= { ns_id => $1, ns_name => $3, ns_case => $2 };
       $ns{$ns->{ns_id}}= $ns;
@@ -185,6 +186,7 @@ LINE: while (1)
     }
     elsif ($l =~ m#^\s*<revision>#)
     {
+      # print ">>> REVISION\n";
       $state= 2;
     }
     elsif ($l =~ m#^\s*<(title|ns|id)>([^<]+)</.+>#)
@@ -202,8 +204,14 @@ LINE: while (1)
     elsif ($l =~ m#^\s*<text xml:space="preserve">(.*)#) # TODO: check for other <text> tags
     {
       my $t= $1;
+      # print ">>> TEXT\n";
       $state= ($t =~ s#</text>##) ? 2 : 3;
       @text= ( $t );
+    }
+    elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
+    {
+      print "ATTN: strange text-tag: [$_]\n";
+      $cnt_ATTN++;
     }
     elsif ($l =~ m#^\s*<(id|sha1)>([^<]+)</.+>#)
     {
@@ -253,11 +261,14 @@ LINE: while (1)
   print "saving namespaces to [$fnm_ns_json]\n";
   Util::JSON::write_json_file ($fnm_ns_json, \%ns);
 
+  # BUG: somehow $ns{'0'} ends up as $ns{''}; the counter seems to be right ...
   my @ns= map { $ns{$_} } sort { $a <=> $b } keys %ns;
   my $csv= new Util::Simple_CSV ('separator' => "\t", 'no_array' => 1);
   $csv->define_columns (qw(ns_id use_count ns_case ns_name));
   $csv->{data}= \@ns;
   $csv->save_csv_file(filename => $fnm_ns_csv);
+
+  print "Attention-Count: $cnt_ATTN\n";
 
   1;
 }

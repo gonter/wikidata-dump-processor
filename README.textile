@@ -6,10 +6,11 @@ h2. quick usage
 
 <pre>
 script
-./wdq1.pl --date 2015-08-31
+./wdq1.pl --date 2015-08-16
+./wdq2.pl --date 2015-08-16 --scan
 </pre>
 
-The script will run for several hours (2015-08-31 took 2.5 hours on my
+The scripts will run for several hours (2016-08-15 took 4.5 hours on my
 machine), so it might be useful to record log messages into a transcript
 file.
 
@@ -27,10 +28,28 @@ element by element to a series of output files.
 | props.csv | property catalog |
 | P####.csv | filtered property #### |
 
-h3. out/wdq#####.cmp
+h2. wkt1.pl
+
+TODO: describe ...
+
+h2. TODO: gnd1.pl
+
+TODO: write and describe ...
+
+h2. wdq2.pl
+
+Creates an index for items.csv to be able to load individual frames
+from the item store and render them to STDOUT.
+
+TODO:
+* factor out at least the rendering step into a library for other scripts
+  to use.
+
+h3. data/out/wdq#####.cmp
 
 Each item as a JSON structure is compressed individually and written to
-a file with this name pattern.  The positional information in the items and P-catalogs are intended for subsequent processing steps.
+a file with this name pattern.  The positional information in the items
+and P-catalogs are intended for subsequent processing steps (see wdq2.pl).
 
 h3. CSV files
 

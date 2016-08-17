@@ -3,7 +3,10 @@ package WikiData::Utils;
 
 use strict;
 
-# TODO: make reasonable defaults and a command line option
+# TODO:
+# * make reasonable defaults and a command line option
+# * Wiktionary::Utils is more or less the same thing with other defaults; *unify* these modules!
+
 sub get_paths
 {
   my $date= shift;

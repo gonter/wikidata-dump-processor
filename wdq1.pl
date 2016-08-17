@@ -18,13 +18,13 @@ my $TSV_SEP= "\t";
 # my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
 my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
 my $MAX_INPUT_LINES= undef;
-# my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
+# my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time; TODO: add commandline option
 
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2015-12-28'; # maybe a config file is in order to set up the defaults...
+my $date= '2016-08-16'; # maybe a config file is in order to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -46,6 +46,7 @@ while (my $arg= shift (@ARGV))
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'max-lines') { $MAX_INPUT_LINES=  $av || shift (@ARGV); }
     else
     {
       usage();
@@ -90,11 +91,11 @@ start_time: $ts_start
 -----------
 EOX
 
-analyze_dump ($fnm);
+analyze_wikidata_dump ($fnm);
 
 exit(0);
 
-sub analyze_dump
+sub analyze_wikidata_dump
 {
   my $fnm= shift;
 
