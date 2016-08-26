@@ -139,7 +139,8 @@ my %ns;
 my @lines;
 my %frame;
 my @text;
-my %cnt_ATTN= 0;
+my $cnt_ATTN= 0;
+my $debug_item= 0;
 LINE: while (1)
 {
   $pos= tell(FI);
@@ -188,6 +189,7 @@ LINE: while (1)
     {
       # print ">>> REVISION\n";
       $state= 2;
+      @text= ();
     }
     elsif ($l =~ m#^\s*<(title|ns|id)>([^<]+)</.+>#)
     {
@@ -210,8 +212,9 @@ LINE: while (1)
     }
     elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
     {
-      print "ATTN: strange text-tag: [$_]\n";
+      print "ATTN: strange text-tag: [$l] title=[$frame{title}]\n";
       $cnt_ATTN++;
+      $debug_item= 1;
     }
     elsif ($l =~ m#^\s*<(id|sha1)>([^<]+)</.+>#)
     {
@@ -238,13 +241,15 @@ LINE: while (1)
 
     $frame{fo_pos_end}= $fo_rec->tell();
 
-    if ($debug > 1)
+    if ($debug > 1 || $debug_item)
     {
       print "="x72, "\n";
       print "frame: ", Dumper(\%frame);
       print "text: ", Dumper(\@text);
-      # print "lines: ", Dumper (\@lines);
+      print "lines: ", Dumper (\@lines);
       print "="x72, "\n";
+
+      $debug_item= 0;
     }
 
     print FO_ITEMS join ($TSV_SEP, map { $frame{$_} } @cols1), "\n";
