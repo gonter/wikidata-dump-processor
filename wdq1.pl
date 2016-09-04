@@ -24,7 +24,7 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2016-08-16'; # maybe a config file is in order to set up the defaults...
+my $date= '2016-08-22'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -173,12 +173,16 @@ my %filters=
   'P361'  => wdpf ('P361', 'part of', 1),
   'P1269' => wdpf ('P1269', 'facet of', 1),
 
-  # person identifiers
+  # item identifer (persons, places, etc.)
+  'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
   'P227'  => wdpf ('P227', 'GND identifier'),
+  'P244'  => wdpf ('P244', 'LCAuth ID'), # Library of Congress ID for authority control (for books use P1144)
+  'P1245' => wdpf ('P1245', 'OmegaWiki Defined Meaning'), # "Defined Meaning" on the site OmegaWiki
+
+  # person identifiers
   'P214'  => wdpf ('P214', 'VIAF identifier'),
   'P496'  => wdpf ('P496', 'ORCID identifier'),
-
-  'P213'  => wdpf ('P213', 'ISNI'), # check
+  'P2280' => wdpf ('P2280', 'Austrian Parliament ID'), # identifier for an individual, in the Austrian Parliament's "Who's Who" database
 
   # personal data?
   'P569'  => wdpf ('P569', 'Date of birth'),
@@ -186,17 +190,19 @@ my %filters=
   'P2298' => wdpf ('P2298', 'NSDAP membership number (1925-1945)'),
 
   # publications
-  'P345'  => wdpf ('P345', 'IMDb identifier'),
   'P212'  => wdpf ('P212', 'ISBN-13'),
   'P236'  => wdpf ('P212', 'ISSN'),
+  'P345'  => wdpf ('P345', 'IMDb identifier'),
+  'P356'  => wdpf ('P356', 'DOI'),
+  'P698'  => wdpf ('P698', 'PubMed ID'), # identifier for journal articles/abstracts in PubMed
   'P957'  => wdpf ('P957', 'ISBN-10'),
+  'P3035' => wdpf ('P3035', 'ISBN publisher prefix'), # ISBN publisher prefix
 
   # arXiv.org
   'P818'  => wdpf ('P818', 'arXiv ID'),
   'P820'  => wdpf ('P820', 'arXiv classification'),
 
   # permanent identifiers
-  'P356'  => wdpf ('P356',  'DOI'),
   'P1184' => wdpf ('P1184', 'Handle'),
   'P727'  => wdpf ('P727',  'Europeana ID'),
   'P1036' => wdpf ('P1036', 'Dewey Decimal Classification'),
@@ -217,8 +223,10 @@ my %filters=
   'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
   'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
 
-  # misc.
-  'P625'  => wdpf ('P625', 'Geo Coordinates'),
+  # Geography
+  'P625'  => wdpf ('P625',  'Geo Coordinates'),
+  '1566'  => wdpf ('P1566', 'GeoNames ID'),
+  'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
 
   # chemistry
   'P233' => wdpf ('P233', 'SMILES'), # Simplified Molecular Input Line Entry Specification
@@ -240,6 +248,24 @@ my %filters=
   'P1072' => wdpf ('P1072' => 'readable file format'),
   'P1073' => wdpf ('P1073' => 'writable file format'),
   'P1195' => wdpf ('P1195' => 'file extension'),
+
+  # external-id
+  'P503' => wdpf ('P503' => 'ISO standard'), # number of the ISO standard which normalizes the object
+
+  # URLs
+  'P854' => wdpf ('P854' => 'reference URL'),
+  'P856' => wdpf ('P856' => 'official website'),
+  'P953' => wdpf ('P953' => 'full text available at'),
+  'P973' => wdpf ('P973' => 'described at URL'),
+  'P1019' => wdpf ('P1019' => 'feed URL'),
+  'P1065' => wdpf ('P1065' => 'archive URL'),
+  'P1324' => wdpf ('P1324' => 'source code repository'),
+  'P1325' => wdpf ('P1325' => 'external data available at'),
+  'P1401' => wdpf ('P1401' => 'bug tracking system'),
+  'P1581' => wdpf ('P1581' => 'official blog'),
+  'P2699' => wdpf ('P2699' => 'URL'),
+
+  # '' => wdpf ('' => ''),
 );
 my @filters= sort keys %filters;
 

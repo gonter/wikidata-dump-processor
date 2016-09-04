@@ -20,7 +20,7 @@ use Wiktionary::Utils;
 use PDS;
 
 my $seq= 'a';
-my $date= '2016-07-04';
+my $date= '2016-08-22';
 my $lang= undef;
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
@@ -127,7 +127,7 @@ sub scan_items
   # print "index: ", Dumper ($index);
 
   my ($idx_id, $idx_fo_num, $idx_pos_beg, $idx_pos_end)= map { $index->{$_} } qw(id fo_count fo_pos_beg fo_pos_end);
-  print "idx_id=[$idx_id] idx_fo_num=[$idx_fo_num] idx_pos_beg=[$idx_pos_beg] idx_pos_end=[$idx_pos_end]\n";
+  # print "idx_id=[$idx_id] idx_fo_num=[$idx_fo_num] idx_pos_beg=[$idx_pos_beg] idx_pos_end=[$idx_pos_end]\n";
 
   my $columns= $csv->{'columns'};
   # print "columns: ", Dumper ($columns);
@@ -280,6 +280,7 @@ sub get_items
   my $cnt_items= 0;
   foreach my $rec_num (sort { $a <=> $b } @rec_nums)
   {
+  print "rec_num=[$rec_num]\n";
     my $data= $pds->retrieve ($rec_num);
     # main::hexdump ($data);
     my ($x_rec_num, $pos_idx, $f_num, $beg, $end, @x)= unpack ('LLLLLLLL', $data);
@@ -292,6 +293,7 @@ sub get_items
       fo_pos_beg => $beg,
       fo_pos_end => $end,
     };
+    print "row: ", Dumper ($row);
 
     if ($x_rec_num > 0)
     {
