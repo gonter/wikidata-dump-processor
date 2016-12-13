@@ -74,8 +74,15 @@ sub extract
   my $x= shift;
 
   my $y;
+  _extract ($x, $fp->{'transform'});
+}
 
-  if ($fp->{'transform'} == 1 && ref ($x) eq 'HASH')
+sub _extract
+{
+  my $x= shift;
+  my $transform= shift;
+
+  if ($transform == 1 && ref ($x) eq 'HASH')
   {
     my $et;
     if ($x->{'entity-type'} eq 'item') { $et= 'Q'; }

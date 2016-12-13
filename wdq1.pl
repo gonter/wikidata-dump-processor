@@ -24,7 +24,7 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2016-08-22'; # maybe a config file should be used to set up the defaults...
+my $date= '2016-12-12'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -115,6 +115,9 @@ my %name_sitelinks;
 my %props;
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks);
+
+my $running= 1;
+$SIG{INT}= sub { $running= 0; };
 
 # local *FI= wkutils::open_input($fnm);
 if ($fnm =~ /\.gz$/)
@@ -223,6 +226,12 @@ my %filters=
   'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
   'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
 
+  # BookBrainz
+  'P2607' => wdpf ('P2607', 'BookBrainz creator ID'), # identifier for a creator per the BookBrainz open book encyclopedia
+
+  # WorldCat
+  'P2163' => wdpf ('P163', 'FAST-ID'), # authority control identifier in WorldCat's “FAST Linked Data” authority file
+
   # Geography
   'P625'  => wdpf ('P625',  'Geo Coordinates'),
   '1566'  => wdpf ('P1566', 'GeoNames ID'),
@@ -269,6 +278,20 @@ my %filters=
 );
 my @filters= sort keys %filters;
 
+# Authority Control
+my @authctrl= qw(P213 P214 P227 P244 P496);
+my %authctrl= map { $_ => 1 } @authctrl;
+
+my $fnm_authctrl= $data_dir . '/authctrl.json';
+
+local *FO_AUTHCTRL;
+open (FO_AUTHCTRL, '>:utf8', $fnm_authctrl) or die "can't write to [$fnm_authctrl]";
+autoflush FO_AUTHCTRL 1;
+print FO_AUTHCTRL "[\n";
+my $cnt_authctrl= 0;
+
+# properties
+
 # Property Bitmap Table
 my @id_prop= (); # bitmap table
 my $max_id= -1;
@@ -287,7 +310,7 @@ my $fo_pos= 0;
 
 <FI>;
 my $pos;
-LINE: while (1)
+LINE: while ($running)
 {
   $pos= tell(FI);
   my $l= <FI>;
@@ -401,6 +424,25 @@ LINE: while (1)
   my @found_properties= ();
   my @bm_row=(); for (my $i= 0; $i <= $max_prop; $i++) { $bm_row[$i]='.' }
 
+  # Authority Control
+  my $authctrl;
+  if ($ty eq 'item')
+  {
+    foreach my $x (@authctrl)
+    {
+      if (exists ($jc->{$x}))
+      {
+        $authctrl=
+        {
+          'id' => $id,
+          'tlt_l' => \%tlt_l,
+          'tlt_d' => \%tlt_d,
+        };
+        last;
+      }
+    }
+  }
+
   # foreach my $property (@filters)
   PROP: foreach my $property (@all_properties)
   {
@@ -418,11 +460,6 @@ LINE: while (1)
     $id_prop[$id_num]->[$prop_num]++ if ($exp_bitmap == 1);
     $bm_row[$prop_num]='#' if ($exp_bitmap == 2);
 
-    # if (exists ($jc->{$property}))
-    if (exists ($filters{$property}))
-    {
-      my $fp= $filters{$property};
-      # print "fp: ", Dumper ($fp);
       my $p= $jc->{$property};
       # print "p: ", Dumper ($p);
 
@@ -434,27 +471,42 @@ LINE: while (1)
       if ($@)
       {
         print DIAG "id=$id error: property=[$property] $x=[$x] e=[$@] property=", Dumper ($p);
+        next PROP;
       }
       elsif (!defined ($x))
       {
         print DIAG "id=$id undef x: property=[$property] property=", Dumper ($p);
+        next PROP;
       }
-      else
-      {
+
+    my $y;
+    if (exists ($filters{$property}))
+    {
+      my $fp= $filters{$property};
+      # print "fp: ", Dumper ($fp);
+
   # ZZZ
         push (@found_properties, $property);
 
-        my $y= $fp->extract($x);
+        $y= $fp->extract($x);
 
         local *FO_p= $fp->{'_FO'};
         print FO_p join ($TSV_SEP,
-                 $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
-                 $id, $ty,
-                 $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
-                 $lang_l, $pref_l,
-                 $y,
-                 ), "\n";
-      }
+               $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
+               $id, $ty,
+               $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
+               $lang_l, $pref_l,
+               $y,
+               ), "\n";
+    }
+    else
+    {
+      $y= WikiData::Property::Filter::_extract ($x, (ref($x) eq 'HASH') ? 1 : 0);
+    }
+
+    if (defined ($authctrl))
+    { # collect all filtered properties for the authority record
+      $authctrl->{$property}= $y;
     }
   }
 
@@ -475,12 +527,24 @@ LINE: while (1)
   print BM_FILE join ('', @bm_row);
   print BM_FILE "\n";
 
+  if (defined ($authctrl))
+  {
+    print FO_AUTHCTRL ",\n" if ($cnt_authctrl);
+    print FO_AUTHCTRL to_json($authctrl);
+    $cnt_authctrl++;
+    print "$cnt_authctrl authority control records\n" if (($cnt_authctrl % 1000) == 0);
+  }
+
   last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
   # $pos= tell(FI);
 }
 
 close (FI);
 $fo_rec->close();
+
+print "$cnt_authctrl authority records written to $fnm_authctrl\n";
+print FO_AUTHCTRL "\n]\n";
+close (FO_AUTHCTRL);
 
 # check if there are multiple definitions of the same property and flatten the structure a bit
 open (PROPS_LIST, '>:utf8', $data_dir . '/props.csv') or die;
@@ -527,6 +591,7 @@ print "max_id: $max_id\n";
 print "max_prop: $max_prop\n";
 print "lines: $line\n";
 print "fo_count: $fo_count\n";
+print "cnt_authctrl: $cnt_authctrl\n";
 
   if ($exp_bitmap == 1)
   {

@@ -20,7 +20,7 @@ use Wiktionary::Utils;
 use PDS;
 
 my $seq= 'a';
-my $date= '2016-08-22';
+my $date= '2016-12-05';
 my $lang= undef;
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
