@@ -8,6 +8,10 @@ use Data::Dumper;
 $Data::Dumper::Indent= 1;
 use FileHandle;
 
+binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
+binmode( STDERR, ':utf8' ); autoflush STDERR 1;
+binmode( STDIN,  ':utf8' );
+
 use lib 'lib';
 use WikiData::Utils;
 use WikiData::Property::Filter;
@@ -24,7 +28,7 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2016-12-12'; # maybe a config file should be used to set up the defaults...
+my $date= '2016-12-19'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -116,22 +120,22 @@ my %props;
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks);
 
-my $running= 1;
-$SIG{INT}= sub { $running= 0; };
+  my $running= 1;
+  $SIG{INT}= sub { $running= 0; };
 
-# local *FI= wkutils::open_input($fnm);
-if ($fnm =~ /\.gz$/)
-{
-  open (FI, '-|', "gunzip -c '$fnm'") or die "can't gunzip [$fnm]";
-}
-# elsif bunzip ... see wkt1
-else
-{
-  open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
-}
+  # local *FI= wkutils::open_input($fnm);
+  if ($fnm =~ /\.gz$/)
+  {
+    open (FI, '-|', "gunzip -c '$fnm'") or die "can't gunzip [$fnm]";
+  }
+  # elsif bunzip ... see wkt1
+  else
+  {
+    open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
+  }
 
-my $line= 0;
-my $t_start= time();
+  my $line= 0;
+  my $t_start= time();
 
 unless (-d $data_dir)
 {
@@ -286,7 +290,7 @@ my $fnm_authctrl= $data_dir . '/authctrl.json';
 
 local *FO_AUTHCTRL;
 open (FO_AUTHCTRL, '>:utf8', $fnm_authctrl) or die "can't write to [$fnm_authctrl]";
-autoflush FO_AUTHCTRL 1;
+# autoflush FO_AUTHCTRL 1;
 print FO_AUTHCTRL "[\n";
 my $cnt_authctrl= 0;
 
@@ -306,46 +310,46 @@ if ($exp_bitmap)
 
 my $fo_rec= new FDS('out_pattern' => "$out_dir/wdq%05d");
 my $fo_count= $fo_rec->open();
-my $fo_pos= 0;
+  my $fo_pos= 0;
 
-<FI>;
-my $pos;
-LINE: while ($running)
-{
-  $pos= tell(FI);
-  my $l= <FI>;
-  last unless (defined ($l));
-
-  if ($fo_pos >= $OUT_CHUNK_SIZE)
+  <FI>;
+  my $pos;
+  LINE: while ($running)
   {
-    $fo_count= $fo_rec->open();
-    $fo_pos= 0;
-  }
-  $fo_pos= $fo_rec->tell();
+    $pos= tell(FI);
+    my $l= <FI>;
+    last unless (defined ($l));
 
-  $line++;
-  print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 10_000) == 0);
+    if ($fo_pos >= $OUT_CHUNK_SIZE)
+    {
+      $fo_count= $fo_rec->open();
+      $fo_pos= 0;
+    }
+    $fo_pos= $fo_rec->tell();
 
-  my $le= chop ($l);
-  if ($l eq '[' || $l eq ']')
-  {
-    print "[$line] [$pos] skipping array bracket: $l\n";
-    # $pos= tell(FI);
-    next LINE;
-  }
+    $line++;
+    print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 10_000) == 0);
 
-  my $sx= chop ($l); $l .= $sx if ($sx ne ',');
+    my $le= chop ($l);
+    if ($l eq '[' || $l eq ']')
+    {
+      print "[$line] [$pos] skipping array bracket: $l\n";
+      # $pos= tell(FI);
+      next LINE;
+    }
 
-  # print "[$line] [$pos] [$l]\n";
-  my $j;
-  eval { $j= decode_json ($l); }; 
-  if ($@)
-  {
-    print "[$line] [$pos] ERROR=[", $@, "]\n";
-    print DIAG "[$line] [$pos] ERROR=[", $@, "] line=[$line]\n";
-    # $pos= tell(FI);
-    next LINE;
-  }
+    my $sx= chop ($l); $l .= $sx if ($sx ne ',');
+
+    # print "[$line] [$pos] [$l]\n";
+    my $j;
+    eval { $j= decode_json ($l); }; 
+    if ($@)
+    {
+      print "[$line] [$pos] ERROR=[", $@, "]\n";
+      print DIAG "[$line] [$pos] ERROR=[", $@, "] line=[$line]\n";
+      # $pos= tell(FI);
+      next LINE;
+    }
 
   my ($id, $ty)= map { $j->{$_} } qw(id type);
   my $id_num;
@@ -530,7 +534,7 @@ LINE: while ($running)
   if (defined ($authctrl))
   {
     print FO_AUTHCTRL ",\n" if ($cnt_authctrl);
-    print FO_AUTHCTRL to_json($authctrl);
+    print FO_AUTHCTRL encode_json($authctrl);
     $cnt_authctrl++;
     print "$cnt_authctrl authority control records\n" if (($cnt_authctrl % 1000) == 0);
   }
