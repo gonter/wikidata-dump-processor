@@ -98,6 +98,7 @@ sub parse_authctrl
 
   my $line= 0;
   my $t_start= time();
+  my %p31;
 
   <FI>;
   my $pos;
@@ -131,11 +132,15 @@ sub parse_authctrl
       next LINE;
     }
 
-    if ($j->{P31} eq 'Q5')
+    # item is now in focus...
+    my ($p31)= map { $j->{$_} } qw(P31);
+    $p31{$p31}++;
+
+    if ($p31 eq 'Q5')
     {
-      print __LINE__, " j: ", main::Dumper ($j);
+      # print __LINE__, " j: ", main::Dumper ($j);
       my @d= get_pers_data($j);
-      print __LINE__, " d: ", main::Dumper (\@d);
+      # print __LINE__, " d: ", main::Dumper (\@d);
 
       print FO join ("\t", @d), "\n";
       $fo_lines++;
@@ -144,6 +149,8 @@ sub parse_authctrl
   }
 
   close (FO);
+
+  print __LINE__, " P31: ", main::Dumper(\%p31);
 
   $fo_lines;
 }
@@ -166,7 +173,7 @@ sub get_time
 {
   my $s= shift;
 
-  print "s=[$s]\n";
+  # print "s=[$s]\n";
   return '' unless ($s);
 
   my $j= decode_json ($s);
