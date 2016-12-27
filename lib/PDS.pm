@@ -219,7 +219,7 @@ sub print_page_info
   print "highest_page_num=[$self->{highest_page_num}]\n";
 
   my $ps= $self->{page_skips};
-  print "page_skips: ", join (', ', map { $_. ' <= '. $ps->{$_}.'x' } sort keys %$ps), "\n";
+  print "page_skips: ", join (', ', map { $_. ' <= '. $ps->{$_}.'x' } sort { $a <=> $b } keys %$ps), "\n";
 }
 
 sub load_page

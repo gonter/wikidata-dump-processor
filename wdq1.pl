@@ -432,18 +432,32 @@ my $fo_count= $fo_rec->open();
   my $authctrl;
   if ($ty eq 'item')
   {
+    my $use_authctrl= 0;
     foreach my $x (@authctrl)
     {
       if (exists ($jc->{$x}))
       {
+        $use_authctrl= 1;
+        last;
+      }
+    }
+
+    if (!$use_authctrl && exists ($jc->{P31}))
+    {
+      my $P31= $jc->{P31};
+      my $P31val= $P31->[0]->{mainsnak}->{datavalue}->{value}->{id};
+      # print __LINE__, " P31=[$P31] => [$P31val]\n";
+      $use_authctrl= 1 if ($P31val eq 'Q5');
+    }
+
+    if ($use_authctrl)
+    {
         $authctrl=
         {
           'id' => $id,
           'tlt_l' => \%tlt_l,
           'tlt_d' => \%tlt_d,
         };
-        last;
-      }
     }
   }
 
