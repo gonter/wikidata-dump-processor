@@ -74,8 +74,9 @@ while (1)
     fetch_and_convert ($dump->{date}, $seq, $dump->{size});
   }
 
-  print scalar localtime (time()), " sleeping...\n";
-  sleep (3600);
+  my $sleep_time= 3600 + int(rand(3600));
+  print scalar localtime (time()), " sleeping until ", scalar localtime (time()+$sleep_time), "\n";
+  sleep ($sleep_time);
 }
 
 exit (0);
