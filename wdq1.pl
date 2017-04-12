@@ -328,7 +328,7 @@ my $fo_count= $fo_rec->open();
     $fo_pos= $fo_rec->tell();
 
     $line++;
-    print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 10_000) == 0);
+    printf ("%9ld %12ld %3d %12ld\n", $line, $pos, $fo_count, $fo_pos) if (($line % 10_000) == 0);
 
     my $le= chop ($l);
     if ($l eq '[' || $l eq ']')
@@ -550,7 +550,7 @@ my $fo_count= $fo_rec->open();
     print FO_AUTHCTRL ",\n" if ($cnt_authctrl);
     print FO_AUTHCTRL encode_json($authctrl);
     $cnt_authctrl++;
-    print "$cnt_authctrl authority control records\n" if (($cnt_authctrl % 1000) == 0);
+    printf ("%8ld authority control records\n", $cnt_authctrl)  if (($cnt_authctrl % 1000) == 0);
   }
 
   last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
