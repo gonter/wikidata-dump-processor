@@ -65,6 +65,8 @@ while (my $arg= shift (@ARGV))
   else { push (@PARS, $arg); }
 }
 
+notify('starting wdq0 loop');
+
 while (1)
 {
   my $dumps= check();
@@ -80,6 +82,13 @@ while (1)
 }
 
 exit (0);
+
+sub notify
+{
+  my $msg= shift;
+
+  system (qw(notify-sms.pl gg-uni), $msg);
+}
 
 sub fetch_and_convert
 {
@@ -97,6 +106,7 @@ sub fetch_and_convert
   else
   {
     print "fetching stuff for $date\n";
+    notify('wdq0: this is a test send from w4.urxn.at');
     my ($fetched, $dump_file)= fetch_dump ($date);
 
     if ($fetched)
@@ -123,17 +133,22 @@ sub fetch_and_convert
       return undef;
     }
 
+    notify ('wdq0: finished download, starting wdq1');
     my @cmd1= (qw(./wdq1.pl --date), $date);
     print "cmd1: [", join (' ', @cmd1), "]\n";
     system (@cmd1);
 
+    notify ('wdq0: finished wdq1, starting wdq2');
     my @cmd2= (qw(./wdq2.pl --scan --date), $date);
     print "cmd2: [", join (' ', @cmd2), "]\n";
     system (@cmd2);
 
+    notify ('wdq0: finished wdq2, starting wdq3');
     my @cmd3= (qw(./wdq3.pl --date), $date);
     print "cmd3: [", join (' ', @cmd3), "]\n";
     system (@cmd3);
+
+    notify ('wdq0: finished wikidata conversion');
   }
 
 }
@@ -181,7 +196,7 @@ sub check
     if (m#<a href="((\d{4})(\d{2})(\d{2})\.json\.gz)">(\d{8}\.json\.gz)</a>\s+(\S+)\s+(\S+)\s+(\d+)#)
     {
       my ($f1, $year, $mon, $day, $f2, $xdate, $time, $size)= ($1, $2, $3, $4, $5, $6, $7, $8);
-      print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
+      # print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
       my $rec=
       {
         dump_file => $f1,
