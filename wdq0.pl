@@ -69,7 +69,7 @@ notify('starting wdq0 loop');
 
 while (1)
 {
-  my $dumps= check();
+  my $dumps= check_dump();
   # print "dumps: ", Dumper ($dumps);
   foreach my $dump (@$dumps)
   {
@@ -106,7 +106,7 @@ sub fetch_and_convert
   else
   {
     print "fetching stuff for $date\n";
-    notify('wdq0: this is a test send from w4.urxn.at');
+    notify("wdq0: about to fetch dump for $date");
     my ($fetched, $dump_file)= fetch_dump ($date);
 
     if ($fetched)
@@ -133,7 +133,7 @@ sub fetch_and_convert
       return undef;
     }
 
-    notify ('wdq0: finished download, starting wdq1');
+    notify ("wdq0: finished download, size=$fetched, starting wdq1");
     my @cmd1= (qw(./wdq1.pl --date), $date);
     print "cmd1: [", join (' ', @cmd1), "]\n";
     system (@cmd1);
@@ -147,6 +147,10 @@ sub fetch_and_convert
     my @cmd3= (qw(./wdq3.pl --date), $date);
     print "cmd3: [", join (' ', @cmd3), "]\n";
     system (@cmd3);
+
+    # TODO: add symlink
+    system (qw(rm data/latest));
+    system ('ln', '-s', join ('', $date, $seq), 'data/latest');
 
     notify ('wdq0: finished wikidata conversion');
   }
@@ -162,7 +166,7 @@ sub fetch_dump
 
   my $dump_file= $d.'.json.gz';
   my $l_dump_file= 'dumps/'. $dump_file;
-  print "dump_file=[$dump_file] l_dump_file=[$l_dump_file]\n";
+  print __LINE__, " dump_file=[$dump_file] l_dump_file=[$l_dump_file]\n";
 
   unless (-f $l_dump_file)
   {
@@ -170,7 +174,7 @@ sub fetch_dump
     my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
     print "cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
     # return undef;
-    # system (@cmd_fetch);
+    system (@cmd_fetch);
   }
 
   my @st= stat ($l_dump_file);
@@ -183,7 +187,7 @@ sub fetch_dump
   ($fetched, $dump_file);
 }
 
-sub check
+sub check_dump
 {
   my $cmd_fetch= "$wget $dumps_source -O-";
 

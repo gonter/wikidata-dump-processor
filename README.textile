@@ -124,13 +124,18 @@ h3. TODO
 
 h2. Wikitionary
 
-fetch dumps from [2] and [3] and possibly other wiktionaries
+fetch dumps from [2], [3] and [4] and possibly other wiktionaries
+
+{en,de,nl}wiktionary-<YYYYMMDD>-pages-meta-current.xml.bz2
+
+e.g. https://dumps.wikimedia.org/enwiktionary/20170501/enwiktionary-20170501-pages-meta-current.xml.bz2
 
 h2. Links
 
 * [1] https://dumps.wikimedia.org/other/wikidata/
 * [2] https://dumps.wikimedia.org/enwiktionary/
 * [3] https://dumps.wikimedia.org/dewiktionary/
+* [4] https://dumps.wikimedia.org/nlwiktionary/
 
 h3. Todo: add a way to get the proper date
 

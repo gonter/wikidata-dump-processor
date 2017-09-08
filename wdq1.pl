@@ -32,7 +32,7 @@ my $date= '2016-12-19'; # maybe a config file should be used to set up the defau
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
-my @langs= qw(en de it fr);
+my @langs= qw(en de it fr nl);
 
 my $fo_compress= 2;
 # 0..don't compress at all
@@ -179,6 +179,7 @@ my %filters=
   'P360'  => wdpf ('P360', 'is a list of', 1),
   'P361'  => wdpf ('P361', 'part of', 1),
   'P1269' => wdpf ('P1269', 'facet of', 1),
+  'P2429' => wdpf ('P2429', 'label_en | expected completeness', 1), # describes whether a property is intended to represent a complete set of real-world items having that property
 
   # item identifer (persons, places, etc.)
   'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
