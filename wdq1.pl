@@ -179,7 +179,6 @@ my %filters=
   'P360'  => wdpf ('P360', 'is a list of', 1),
   'P361'  => wdpf ('P361', 'part of', 1),
   'P1269' => wdpf ('P1269', 'facet of', 1),
-  'P2429' => wdpf ('P2429', 'label_en | expected completeness', 1), # describes whether a property is intended to represent a complete set of real-world items having that property
 
   # item identifer (persons, places, etc.)
   'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
@@ -282,6 +281,18 @@ my %filters=
   # '' => wdpf ('' => ''),
 );
 my @filters= sort keys %filters;
+
+=begin comment
+
+meta-properties: properties about properties
+
+  'P2429' => wdpf ('P2429', 'expected completeness', 1), # describes whether a property is intended to represent a complete set of real-world items having that property
+  this points to several values, e.g.:
+  Q21873886 => will always be incomplete
+  Q21873974 => will eventually be incomplete
+
+=end comment
+=cut
 
 # Authority Control
 my @authctrl= qw(P213 P214 P227 P244 P496);
