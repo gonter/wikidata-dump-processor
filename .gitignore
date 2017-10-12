@@ -3,6 +3,7 @@ out/
 data/
 wkt-??/
 tmp/
+html/
 @*
 *.swp
 *.tys
