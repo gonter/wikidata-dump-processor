@@ -1,9 +1,9 @@
 dumps/
 out/
-data/
+data
 wkt-??/
 tmp/
-html/
+html
 @*
 *.swp
 *.tys
