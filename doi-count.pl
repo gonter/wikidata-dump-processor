@@ -26,6 +26,14 @@ else
   $property= 'P1184'; # plain Handle values
 }
 
+my %broken_fixed_not_found= # trivially fixed handle values with a valid URL which is not found
+(
+  '10-1123/JSR.2014-0201' => { fixed => '10.1123/JSR.2014-0201', status => 'not found', url => 'http://journals.humankinetics.com/jsr-technical-reports/jsr-technical-reports/effect-of-a-high-intensity-intermittent-exercise-protocol-on-neurocognitive-function-in-healthy-adults-implications-for-return-to-play-management-after-sport-related-concussion' },
+  '10-1123/JSR.2014-0309' => { fixed => '10.1123/JSR.2014-0309', status => 'not found', url => 'http://journals.humankinetics.com/jsr-technical-reports/jsr-technical-reports/interrater-and-intrarater-reliability-and-validity-of-3-measurement-methods-for-shoulder-position-sense' },
+  '10-1123/JSR.2015-0054' => { fixed => '10.1123/JSR.2015-0054', status => 'not found', url => 'http://journals.humankinetics.com/jsr-in-press/jsr-in-press/the-development-and-reliability-of-a-simple-field-based-screening-tool-to-assess-for-scapular-dyskinesis' },
+  # '' => { fixed => '', status => 'not found', url => '' },
+);
+
 my $fnm= "data/latest/${property}.csv";
 
 parse_tsv ($fnm);
