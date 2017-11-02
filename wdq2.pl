@@ -19,16 +19,14 @@ use WikiData::Utils;
 use Wiktionary::Utils;
 use PDS;
 
-my $seq= 'a';
-my $date= '2016-12-05';
+my ($date, $seq);
 my $lang= undef;
-my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
 
-my $upd_paths= 0;
+my $upd_paths= 1;
 
 autoflush STDOUT 1;
 
@@ -43,7 +41,7 @@ while (my $arg= shift (@ARGV))
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
-    elsif ($an eq 'lang') { $lang=  $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'lang') { $lang= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'scan')  { $op_mode= 'scan'; }
     else
     {
@@ -60,7 +58,17 @@ while (my $arg= shift (@ARGV))
   else { push (@PARS, $arg); }
 }
 
+if (defined ($date))
+{
+  $seq= 'a' unless (defined ($seq));
+}
+else
+{
+  $date= 'latest';
+}
+
 # prepare items list
+my ($fnm, $data_dir, $out_dir);
 my $fnm_items;
 if ($upd_paths)
 {
