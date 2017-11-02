@@ -10,10 +10,12 @@ use strict;
 sub get_paths
 {
   my $date= shift;
-  my $seq= shift || 'a';
+  my $seq= shift;
 
   if ($date =~ m#^(\d{4})-?(\d{2})\-(\d{2})$#)
   {
+    $seq= 'a' unless (defined ($seq));
+
     my ($yr, $mon, $day)= ($1, $2, $3);
     my $d1= join ('-', $yr, $mon, $day. $seq);
 
@@ -22,6 +24,13 @@ sub get_paths
     my $out_dir= join ('/', 'data', $d1, 'out');
 
     return ($fnm, $data_dir, $out_dir);
+  }
+  elsif ($date eq 'latest')
+  {
+    my $data_dir= join ('/', 'data', 'latest');
+    my $out_dir= join ('/', 'data', 'latest', 'out');
+
+    return (undef, $data_dir, $out_dir);
   }
 
   die "invalid date format";
