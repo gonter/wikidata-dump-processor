@@ -179,6 +179,7 @@ my %filters=
   'P360'  => wdpf ('P360', 'is a list of', 1),
   'P361'  => wdpf ('P361', 'part of', 1),
   'P1269' => wdpf ('P1269', 'facet of', 1),
+  'P2429' => wdpf ('P2429', 'expected completeness', 1), # wikibase-item describes whether a property is intended to represent a complete set of real-world items having that property
 
   # item identifer (persons, places, etc.)
   'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
