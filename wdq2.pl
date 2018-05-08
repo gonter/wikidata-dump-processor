@@ -23,8 +23,10 @@ my ($date, $seq);
 my $lang= undef;
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
+my $find_column= 'label';
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
+my $tsv_out;
 
 my $upd_paths= 1;
 
@@ -42,6 +44,8 @@ while (my $arg= shift (@ARGV))
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'lang') { $lang= $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'find')  { $op_mode= 'find_items'; $find_column= $av || 'label' }
+    elsif ($an eq 'save')  { $tsv_out= $av || shift (@ARGV); }
     elsif ($an eq 'scan')  { $op_mode= 'scan'; }
     else
     {
@@ -93,7 +97,7 @@ my $csv= new Util::Simple_CSV (separator => "\t");
 
 local *FI_csv;
 my $fi_open;
-unless ($op_mode eq 'get_items')
+if ($op_mode eq 'scan' || $op_mode eq 'find_items')
 {
   (*FI_csv, $fi_open)= $csv->open_csv_file ($fnm_items);
   # print "fi_open=[$fi_open]\n";
@@ -110,7 +114,7 @@ unless ($op_mode eq 'get_items')
 if ($op_mode eq 'find_items')
 {
   usage() unless (@PARS);
-  find_items($csv, \@PARS);
+  find_items($csv, \@PARS, $find_column);
 }
 elsif ($op_mode eq 'get_items')
 {
@@ -124,6 +128,11 @@ elsif ($op_mode eq 'scan')
 else { usage(); }
 
 close (FI_csv) if ($fi_open);
+
+if (defined ($tsv_out))
+{
+  $csv->save_csv_file (filename => $tsv_out, separator => "\t");
+}
 
 exit(0);
 
@@ -220,6 +229,7 @@ sub find_items
 {
   my $csv= shift;
   my $pars= shift;
+  my $find_column= shift;
 
   unless (defined ($pars) && @$pars)
   {
@@ -227,8 +237,9 @@ sub find_items
     return undef;
   }
 
-  my $idx_id= $csv->{'index'}->{'id'};
+  my $idx_id= $csv->{'index'}->{$find_column};
 
+  print "idx_id=[$idx_id]\n";
   my %IDS= map { $_ => 1 } @$pars;
   print "IDS: ", Dumper (\%IDS);
 
@@ -239,8 +250,9 @@ sub find_items
     return (exists ($IDS{$row->[$idx_id]})) ? 1 : 0;
   }
 
+  print "beginning loading of TSV\n";
   local *FI_csv= $csv->{'__FI'};
-  $csv->set ( filter => \&filter, max_items => scalar @PARS);
+  $csv->set ( filter => \&filter, max_items => scalar @$pars);
   $csv->load_csv_file_body (*FI_csv);
   close (FI_csv);
 
@@ -315,7 +327,6 @@ sub get_items
     }
 
   }
-
 
   return $cnt_items;
 }
