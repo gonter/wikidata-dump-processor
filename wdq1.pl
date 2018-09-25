@@ -174,7 +174,7 @@ sub wdpf
 my %filters=
 (
   # structure
-  'P31'  => wdpf ('P31', 'instance of', 1),
+  'P31'   => wdpf ('P31', 'instance of', 1),
   'P279'  => wdpf ('P279', 'subclass of', 1),
   'P360'  => wdpf ('P360', 'is a list of', 1),
   'P361'  => wdpf ('P361', 'part of', 1),
@@ -241,9 +241,10 @@ my %filters=
   'P625'  => wdpf ('P625',  'Geo Coordinates'),
   '1566'  => wdpf ('P1566', 'GeoNames ID'),
   'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
+  'P1282' => wdpf ('P1282', 'OSM tag or key'),
 
   # chemistry
-  'P233' => wdpf ('P233', 'SMILES'), # Simplified Molecular Input Line Entry Specification
+  'P233' => wdpf ('P233', 'SMILES'),   # Simplified Molecular Input Line Entry Specification
   'P234' => wdpf ('P234', 'InChI'),    # International Chemical Identifier
   'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
   'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
@@ -252,8 +253,10 @@ my %filters=
   'P248'  => wdpf ('P248', 'stated in'),
   'P577'  => wdpf ('P577', 'publication date'),
 
-  # classification
-  'P225' => wdpf ('P225', 'taxon name'),
+  # classification, taxonomy
+  'P225'  => wdpf ('P225',  'taxon name'),
+  'P1420' => wdpf ('P1420', 'taxon synonym'),
+  'P1843' => wdpf ('P1843', 'taxon common name'),
 
   # astronomy
   'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
