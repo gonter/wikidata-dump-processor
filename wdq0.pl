@@ -173,6 +173,7 @@ sub fetch_dump
     my $dump_url= $dumps_source . $dump_file;
     my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
     print "cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
+    sleep (60); # TODO: wait a little, lately we fetched 0 byte size files; this should be checked before starting the download
     # return undef;
     system (@cmd_fetch);
   }
@@ -200,7 +201,7 @@ sub check_dump
     if (m#<a href="((\d{4})(\d{2})(\d{2})\.json\.gz)">(\d{8}\.json\.gz)</a>\s+(\S+)\s+(\S+)\s+(\d+)#)
     {
       my ($f1, $year, $mon, $day, $f2, $xdate, $time, $size)= ($1, $2, $3, $4, $5, $6, $7, $8);
-      # print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
+      print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
       my $rec=
       {
         dump_file => $f1,
