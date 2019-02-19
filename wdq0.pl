@@ -70,7 +70,7 @@ notify('starting wdq0 loop');
 while (1)
 {
   my $dumps= check_dump();
-  # print "dumps: ", Dumper ($dumps);
+  print "dumps: ", Dumper ($dumps);
   foreach my $dump (@$dumps)
   {
     fetch_and_convert ($dump->{date}, $seq, $dump->{size});
@@ -87,7 +87,9 @@ sub notify
 {
   my $msg= shift;
 
-  system (qw(notify-sms.pl gg-uni), $msg);
+  print "NOTIFY: [$msg]\n";
+  system (qw(notify-sms.pl gg-uni), scalar localtime(time()), $msg);
+  sleep(1);
 }
 
 sub fetch_and_convert
@@ -105,7 +107,7 @@ sub fetch_and_convert
   }
   else
   {
-    print "fetching stuff for $date\n";
+    print "fetching stuff for date=$date seq=$seq data_dir=[$data_dir]\n";
     notify("wdq0: about to fetch dump for $date");
     my ($fetched, $dump_file)= fetch_dump ($date);
 
@@ -195,13 +197,15 @@ sub check_dump
   print "cmd_fetch=[$cmd_fetch]\n";
   open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
   my @res;
-  while (<LST>)
+  LST: while (<LST>)
   {
     chop;
     if (m#<a href="((\d{4})(\d{2})(\d{2})\.json\.gz)">(\d{8}\.json\.gz)</a>\s+(\S+)\s+(\S+)\s+(\d+)#)
     {
       my ($f1, $year, $mon, $day, $f2, $xdate, $time, $size)= ($1, $2, $3, $4, $5, $6, $7, $8);
       print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
+      next LST if ($size <= 63);
+      next LST if ($size <= 30_000_000_000);
       my $rec=
       {
         dump_file => $f1,

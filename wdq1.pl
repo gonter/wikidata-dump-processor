@@ -103,20 +103,33 @@ sub analyze_wikidata_dump
 {
   my $fnm= shift;
 
-open (DIAG, '>:utf8', '@diag') or die;
+  # statistics
+  my %types;
+  my %attrs;
+  my %count_snaktype;
 
-# statistics
-my %types;
-my %attrs;
+  # item statistics
+  my %lang_labels;
+  my %lang_descr;
+  my %lang_aliases;
+  my %prop_claims;
+  my %name_sitelinks;
 
-# item statistics
-my %lang_labels;
-my %lang_descr;
-my %lang_aliases;
-my %prop_claims;
-my %name_sitelinks;
+  my %props;
 
-my %props;
+  unless (-d $data_dir)
+  {
+    print "mkdir $data_dir\n";
+    mkdir ($data_dir);
+  }
+  unless (-d $out_dir)
+  {
+    print "mkdir $out_dir\n";
+    mkdir ($out_dir)
+  }
+
+  my $diag_file= $data_dir.'/@diag';
+  open (DIAG, '>:utf8', $diag_file) or die "can't write diag file=[$diag_file]";
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks);
 
@@ -137,154 +150,170 @@ my %props;
   my $line= 0;
   my $t_start= time();
 
-unless (-d $data_dir)
-{
-  print "mkdir $data_dir\n";
-  mkdir ($data_dir);
-}
-unless (-d $out_dir)
-{
-  print "mkdir $out_dir\n";
-  mkdir ($out_dir)
-}
+  # item list
+  my $fnm_items= $data_dir . '/items.csv';
 
-# item list
-my $fnm_items= $data_dir . '/items.csv';
+  local *FO_ITEMS;
+  open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
+  my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
+  print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
+  # autoflush FO_ITEMS 1;
 
-local *FO_ITEMS;
-open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
-my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
-print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
-autoflush FO_ITEMS 1;
+  # properties
+  my @cols_filt= (@cols1, 'val');
 
-# properties
-my @cols_filt= (@cols1, 'val');
+  sub wdpf
+  {
+    my $prop= shift;
+    my $label= shift;
+    my $transform= shift;
 
-sub wdpf
-{
-  my $prop= shift;
-  my $label= shift;
-  my $transform= shift;
+    my $fnm_prop= $data_dir . '/' . $prop . '.csv';
 
-  my $fnm_prop= $data_dir . '/' . $prop . '.csv';
+    return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform, 'filename' => $fnm_prop);
+  }
 
-  return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform, 'filename' => $fnm_prop);
-}
+  my %filters=
+  (
+    # structure
+    'P31'   => wdpf ('P31', 'instance of', 1),
+    'P279'  => wdpf ('P279', 'subclass of', 1),
+    'P360'  => wdpf ('P360', 'is a list of', 1),
+    'P361'  => wdpf ('P361', 'part of', 1),
+    'P1269' => wdpf ('P1269', 'facet of', 1),
+    'P2429' => wdpf ('P2429', 'expected completeness', 1), # wikibase-item describes whether a property is intended to represent a complete set of real-world items having that property
 
-my %filters=
-(
-  # structure
-  'P31'   => wdpf ('P31', 'instance of', 1),
-  'P279'  => wdpf ('P279', 'subclass of', 1),
-  'P360'  => wdpf ('P360', 'is a list of', 1),
-  'P361'  => wdpf ('P361', 'part of', 1),
-  'P1269' => wdpf ('P1269', 'facet of', 1),
-  'P2429' => wdpf ('P2429', 'expected completeness', 1), # wikibase-item describes whether a property is intended to represent a complete set of real-world items having that property
+    # item identifer (persons, places, etc.)
+    'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
+    'P227'  => wdpf ('P227', 'GND identifier'),
+    'P244'  => wdpf ('P244', 'LCAuth ID'), # Library of Congress ID for authority control (for books use P1144)
+    'P1245' => wdpf ('P1245', 'OmegaWiki Defined Meaning'), # "Defined Meaning" on the site OmegaWiki
 
-  # item identifer (persons, places, etc.)
-  'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
-  'P227'  => wdpf ('P227', 'GND identifier'),
-  'P244'  => wdpf ('P244', 'LCAuth ID'), # Library of Congress ID for authority control (for books use P1144)
-  'P1245' => wdpf ('P1245', 'OmegaWiki Defined Meaning'), # "Defined Meaning" on the site OmegaWiki
+    # person identifiers
+    'P214'  => wdpf ('P214', 'VIAF identifier'),
+    'P496'  => wdpf ('P496', 'ORCID identifier'),
+    'P651'  => wdpf ('P651', 'Biografisch Portaal number'), # identifier at Biografisch Portaal van Nederland
+    'P2280' => wdpf ('P2280', 'Austrian Parliament ID'), # identifier for an individual, in the Austrian Parliament's "Who's Who" database
+    'P3421' => wdpf ('P3421', 'Belvedere artist ID'), # identifier assigned to an artist by the Österreichische Galerie Belvedere in Vienna
 
-  # person identifiers
-  'P214'  => wdpf ('P214', 'VIAF identifier'),
-  'P496'  => wdpf ('P496', 'ORCID identifier'),
-  'P2280' => wdpf ('P2280', 'Austrian Parliament ID'), # identifier for an individual, in the Austrian Parliament's "Who's Who" database
+    # personal data?
+    'P569'  => wdpf ('P569', 'Date of birth'),
+    'P570'  => wdpf ('P570', 'Date of death'),
+    'P2298' => wdpf ('P2298', 'NSDAP membership number (1925-1945)'),
 
-  # personal data?
-  'P569'  => wdpf ('P569', 'Date of birth'),
-  'P570'  => wdpf ('P570', 'Date of death'),
-  'P2298' => wdpf ('P2298', 'NSDAP membership number (1925-1945)'),
+    # publications
+    'P212'  => wdpf ('P212', 'ISBN-13'),
+    'P236'  => wdpf ('P212', 'ISSN'),
+    'P345'  => wdpf ('P345', 'IMDb identifier'),
+    'P356'  => wdpf ('P356', 'DOI'),
+    'P698'  => wdpf ('P698', 'PubMed ID'), # identifier for journal articles/abstracts in PubMed
+    'P957'  => wdpf ('P957', 'ISBN-10'),
+    'P3035' => wdpf ('P3035', 'ISBN publisher prefix'), # ISBN publisher prefix
 
-  # publications
-  'P212'  => wdpf ('P212', 'ISBN-13'),
-  'P236'  => wdpf ('P212', 'ISSN'),
-  'P345'  => wdpf ('P345', 'IMDb identifier'),
-  'P356'  => wdpf ('P356', 'DOI'),
-  'P698'  => wdpf ('P698', 'PubMed ID'), # identifier for journal articles/abstracts in PubMed
-  'P957'  => wdpf ('P957', 'ISBN-10'),
-  'P3035' => wdpf ('P3035', 'ISBN publisher prefix'), # ISBN publisher prefix
+    # arXiv.org
+    'P818'  => wdpf ('P818', 'arXiv ID'),
+    'P820'  => wdpf ('P820', 'arXiv classification'),
 
-  # arXiv.org
-  'P818'  => wdpf ('P818', 'arXiv ID'),
-  'P820'  => wdpf ('P820', 'arXiv classification'),
+    # permanent identifiers
+    'P1184' => wdpf ('P1184', 'Handle'),
+    'P727'  => wdpf ('P727',  'Europeana ID'),
+    'P1036' => wdpf ('P1036', 'Dewey Decimal Classification'),
+    'P563'  => wdpf ('P563',  'ICD-O'),
 
-  # permanent identifiers
-  'P1184' => wdpf ('P1184', 'Handle'),
-  'P727'  => wdpf ('P727',  'Europeana ID'),
-  'P1036' => wdpf ('P1036', 'Dewey Decimal Classification'),
-  'P563'  => wdpf ('P563',  'ICD-O'),
+    'P1709' => wdpf ('P1709', 'equivalent class'),
 
-  'P1709' => wdpf ('P1709', 'equivalent class'),
+    # Getty
+    'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
+    'P1014' => wdpf ('P1014', 'AAT identifier'),  # Art & Architecture Thesaurus by the Getty Research Institute
+    'P1667' => wdpf ('P1667', 'TGN identifier'),  # Getty Thesaurus of Geographic Names
+    'P2432' => wdpf ('P2432', 'J. Paul Getty Museum artist id'), # identifier assigned to an artist by the J. Paul Getty Museum
+    'P2582' => wdpf ('P2582', 'J. Paul Getty Museum object id'),
 
-  # Getty
-  'P245'  => wdpf ('P245',  'ULAN identifier'), # Getty Union List of Artist Names
-  'P1014' => wdpf ('P1014', 'AAT identifier'),  # Art & Architecture Thesaurus by the Getty Research Institute
-  'P1667' => wdpf ('P1667', 'TGN identifier'),  # Getty Thesaurus of Geographic Names
-  'P2432' => wdpf ('P2432', 'J. Paul Getty Museum artist id'), # identifier assigned to an artist by the J. Paul Getty Museum
-  'P2582' => wdpf ('P2582', 'J. Paul Getty Museum object id'),
+    # MusicBrainz
+    'P434'  => wdpf ('P434', 'MusicBrainz artist id'),
+    'P435'  => wdpf ('P435', 'MusicBrainz work id'),
+    'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
+    'P966'  => wdpf ('P966', 'MusicBrainz label ID'),
+    'P982'  => wdpf ('P982', 'MusicBrainz area ID'),
+    'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
+    'P1407' => wdpf ('P1407', 'MusicBrainz series id'),
+    'P4404' => wdpf ('P4404', 'MusicBrainz recording id'),
+    'P5813' => wdpf ('P5813', 'MusicBrainz release id'),
 
-  # MusicBrainz
-  'P434'  => wdpf ('P434', 'MusicBrainz artist id'),
-  'P435'  => wdpf ('P435', 'MusicBrainz work id'),
-  'P436'  => wdpf ('P436', 'MusicBrainz release group id'),
-  'P1004' => wdpf ('P1004', 'MusicBrainz place id'),
+    # AllMusic
+    'P1728' => wdpf ('P1728', 'AllMusic artist ID'),
+    'P1729' => wdpf ('P1728', 'AllMusic album ID'),
+    'P1730' => wdpf ('P1730', 'AllMusic song ID'),
+    'P1994' => wdpf ('P1994', 'AllMusic composition ID'),
+    'P6110' => wdpf ('P6110', 'AllMusic release ID'),
+    'P6306' => wdpf ('P6306', 'AllMusic performance ID'),
+    
+    # Google Play Music
+    'P4198' => wdpf ('P4198', 'Google Play Music artist ID'),
+    'P4199' => wdpf ('P4199', 'Google Play Music album ID'),
 
-  # BookBrainz
-  'P2607' => wdpf ('P2607', 'BookBrainz creator ID'), # identifier for a creator per the BookBrainz open book encyclopedia
+    # Amazon Music database
+    'P6276' => wdpf ('P6276', 'Amazon Music artist ID'),
 
-  # WorldCat
-  'P2163' => wdpf ('P163', 'FAST-ID'), # authority control identifier in WorldCat's “FAST Linked Data” authority file
+    # Books
+    'P2607' => wdpf ('P2607', 'BookBrainz creator ID'), # identifier for a creator per the BookBrainz open book encyclopedia
+    'P123'  => wdpf ('P123', 'publisher'), # organization or person responsible for publishing books, periodicals, games or software
 
-  # Geography
-  'P625'  => wdpf ('P625',  'Geo Coordinates'),
-  '1566'  => wdpf ('P1566', 'GeoNames ID'),
-  'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
-  'P1282' => wdpf ('P1282', 'OSM tag or key'),
+    # WorldCat
+    'P2163' => wdpf ('P163', 'FAST-ID'), # authority control identifier in WorldCat's “FAST Linked Data” authority file
 
-  # chemistry
-  'P233' => wdpf ('P233', 'SMILES'),   # Simplified Molecular Input Line Entry Specification
-  'P234' => wdpf ('P234', 'InChI'),    # International Chemical Identifier
-  'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
-  'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
-  # note: there are also Canonical SMILES, but no property for that yet
+    # Geography
+    'P625'  => wdpf ('P625',  'Geo Coordinates'),
+    '1566'  => wdpf ('P1566', 'GeoNames ID'),
+    'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
+    'P1282' => wdpf ('P1282', 'OSM tag or key'),
 
-  'P248'  => wdpf ('P248', 'stated in'),
-  'P577'  => wdpf ('P577', 'publication date'),
+    # chemistry
+    'P233' => wdpf ('P233', 'SMILES'),   # Simplified Molecular Input Line Entry Specification
+    'P234' => wdpf ('P234', 'InChI'),    # International Chemical Identifier
+    'P235' => wdpf ('P235', 'InChIKey'), # A hashed version of the full standard InChI - designed to create an identifier that encodes structural information and a can also be practically used in web searching.
+    'P2017'  => wdpf ('P2017', 'isomeric SMILES'),
+    # note: there are also Canonical SMILES, but no property for that yet
 
-  # classification, taxonomy
-  'P225'  => wdpf ('P225',  'taxon name'),
-  'P1420' => wdpf ('P1420', 'taxon synonym'),
-  'P1843' => wdpf ('P1843', 'taxon common name'),
+    'P248'  => wdpf ('P248', 'stated in'),
+    'P577'  => wdpf ('P577', 'publication date'),
 
-  # astronomy
-  'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
+    # classification, taxonomy
+    'P225'  => wdpf ('P225',  'taxon name'),
+    'P1420' => wdpf ('P1420', 'taxon synonym'),
+    'P1843' => wdpf ('P1843', 'taxon common name'),
 
-  # Software
-  'P1072' => wdpf ('P1072' => 'readable file format'),
-  'P1073' => wdpf ('P1073' => 'writable file format'),
-  'P1195' => wdpf ('P1195' => 'file extension'),
+    # astronomy
+    'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
 
-  # external-id
-  'P503' => wdpf ('P503' => 'ISO standard'), # number of the ISO standard which normalizes the object
+    # Software
+    'P1072' => wdpf ('P1072' => 'readable file format'),
+    'P1073' => wdpf ('P1073' => 'writable file format'),
+    'P1195' => wdpf ('P1195' => 'file extension'),
 
-  # URLs
-  'P854' => wdpf ('P854' => 'reference URL'),
-  'P856' => wdpf ('P856' => 'official website'),
-  'P953' => wdpf ('P953' => 'full text available at'),
-  'P973' => wdpf ('P973' => 'described at URL'),
-  'P1019' => wdpf ('P1019' => 'feed URL'),
-  'P1065' => wdpf ('P1065' => 'archive URL'),
-  'P1324' => wdpf ('P1324' => 'source code repository'),
-  'P1325' => wdpf ('P1325' => 'external data available at'),
-  'P1401' => wdpf ('P1401' => 'bug tracking system'),
-  'P1581' => wdpf ('P1581' => 'official blog'),
-  'P2699' => wdpf ('P2699' => 'URL'),
+    # external-id
+    'P503' => wdpf ('P503' => 'ISO standard'), # number of the ISO standard which normalizes the object
 
-  # '' => wdpf ('' => ''),
-);
-my @filters= sort keys %filters;
+    # URLs
+    'P854' => wdpf ('P854' => 'reference URL'),
+    'P856' => wdpf ('P856' => 'official website'),
+    'P953' => wdpf ('P953' => 'full text available at'),
+    'P973' => wdpf ('P973' => 'described at URL'),
+    'P1019' => wdpf ('P1019' => 'feed URL'),
+    'P1065' => wdpf ('P1065' => 'archive URL'),
+    'P1324' => wdpf ('P1324' => 'source code repository'),
+    'P1325' => wdpf ('P1325' => 'external data available at'),
+    'P1401' => wdpf ('P1401' => 'bug tracking system'),
+    'P1581' => wdpf ('P1581' => 'official blog'),
+    'P2699' => wdpf ('P2699' => 'URL'),
+
+    # other person identifiers
+    'P5246' => wdpf ('P5246' => 'Pornhub ID'),
+    'P5267' => wdpf ('P5267' => 'YouPorn ID'),
+    'P5540' => wdpf ('P5540' => 'RedTube ID'),
+    # '' => wdpf ('' => ''),
+  );
+  my @filters= sort keys %filters;
 
 =begin comment
 
@@ -298,34 +327,34 @@ meta-properties: properties about properties
 =end comment
 =cut
 
-# Authority Control
-my @authctrl= qw(P213 P214 P227 P244 P496);
-my %authctrl= map { $_ => 1 } @authctrl;
+  # Authority Control
+  my @authctrl= qw(P213 P214 P227 P244 P496);
+  my %authctrl= map { $_ => 1 } @authctrl;
 
-my $fnm_authctrl= $data_dir . '/authctrl.json';
+  my $fnm_authctrl= $data_dir . '/authctrl.json';
 
-local *FO_AUTHCTRL;
-open (FO_AUTHCTRL, '>:utf8', $fnm_authctrl) or die "can't write to [$fnm_authctrl]";
-# autoflush FO_AUTHCTRL 1;
-print FO_AUTHCTRL "[\n";
-my $cnt_authctrl= 0;
+  local *FO_AUTHCTRL;
+  open (FO_AUTHCTRL, '>:utf8', $fnm_authctrl) or die "can't write to [$fnm_authctrl]";
+  # autoflush FO_AUTHCTRL 1;
+  print FO_AUTHCTRL "[\n";
+  my $cnt_authctrl= 0;
 
-# properties
+  # properties
 
-# Property Bitmap Table
-my @id_prop= (); # bitmap table
-my $max_id= -1;
-my $max_prop= 2000;
+  # Property Bitmap Table
+  my @id_prop= (); # bitmap table
+  my $max_id= -1;
+  my $max_prop= 2000;
 
-if ($exp_bitmap)
-{
-  my $BM_file= '@id_prop.bitmap';
-  print "saving bitmap [$BM_file]\n";
-  open (BM_FILE, '>:raw', $BM_file) or die "can't write to [$BM_file]\n";
-}
+  if ($exp_bitmap)
+  {
+    my $BM_file= '@id_prop.bitmap';
+    print "saving bitmap [$BM_file]\n";
+    open (BM_FILE, '>:raw', $BM_file) or die "can't write to [$BM_file]\n";
+  }
 
-my $fo_rec= new FDS('out_pattern' => "$out_dir/wdq%05d");
-my $fo_count= $fo_rec->open();
+  my $fo_rec= new FDS('out_pattern' => "$out_dir/wdq%05d");
+  my $fo_count= $fo_rec->open();
   my $fo_pos= 0;
 
   <FI>;
@@ -498,19 +527,35 @@ my $fo_count= $fo_rec->open();
         my $p= $jc->{$property};
         # print "p: ", Dumper ($p);
 
+        my $ms;
+        eval { $ms= $p->[0]->{mainsnak} };
+        if ($@)
+        {
+          print DIAG "id=$id ERROR: no mainsnak element; property=[$property] e=[$@] property=", Dumper ($p);
+          next PROP;
+        }
+
+        my $snaktype= $ms->{snaktype};
+        $count_snaktype{$snaktype}++;
+        if ($snaktype ne 'value')
+        {
+          print DIAG "id=$id NOTE: snaktype=[$snaktype], property=[$property]\n";
+          next PROP;
+        }
+
         my $x;
-        eval { $x= $p->[0]->{'mainsnak'}->{'datavalue'}->{'value'} };
+        eval { $x= $ms->{datavalue}->{value} };
 
         # print "x: ", Dumper ($x); # exit;
 
         if ($@)
         {
-          print DIAG "id=$id error: property=[$property] $x=[$x] e=[$@] property=", Dumper ($p);
+          print DIAG "id=$id ERROR: no value element; property=[$property] $x=[$x] e=[$@] property=", Dumper ($p);
           next PROP;
         }
         elsif (!defined ($x))
         {
-          print DIAG "id=$id undef x: property=[$property] property=", Dumper ($p);
+          print DIAG "id=$id NOTE: undef property value: property=[$property] property=", Dumper ($p);
           next PROP;
         }
 
@@ -633,6 +678,7 @@ my $fo_count= $fo_rec->open();
     print STATS "lines: $line\n";
     print STATS "fo_count: $fo_count\n";
     print STATS "cnt_authctrl: $cnt_authctrl\n";
+    print STATS "snaktypes: ", Dumper (\%count_snaktype);
   }
 
   if ($exp_bitmap == 1)
