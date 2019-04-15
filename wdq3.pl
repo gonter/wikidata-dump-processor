@@ -62,8 +62,13 @@ while (my $arg= shift (@ARGV))
 ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq) if ($upd_paths);
 my $fnm_authctrl_json= join ('/', $data_dir, 'authctrl.json');
 my $fnm_authctrl_tsv=  join ('/', $data_dir, 'authctrl.tsv');
+my $fnm_diag=  join ('/', $data_dir, '@wdq3.diag');
+
+open (DIAG, '>:utf8', $fnm_diag); # or be grumpy about that
 
 parse_authctrl($fnm_authctrl_json, $fnm_authctrl_tsv);
+
+close (DIAG);
 
 exit (0);
 
@@ -150,7 +155,7 @@ sub parse_authctrl
 
   close (FO);
 
-  print __LINE__, " P31: ", main::Dumper(\%p31);
+  print DIAG __LINE__, " P31: ", main::Dumper(\%p31);
 
   $fo_lines;
 }
