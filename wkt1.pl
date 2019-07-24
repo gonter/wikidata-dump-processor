@@ -100,166 +100,166 @@ sub analyze_wiktionary_dump
 {
   my $fnm= shift;
 
-open (DIAG, '>:utf8', '@diag') or die;
+  open (DIAG, '>:utf8', '@diag') or die;
 
-local *FI= wkutils::open_input($fnm);
+  local *FI= wkutils::open_input($fnm);
 
-my $line= 0;
-my $t_start= time();
+  my $line= 0;
+  my $t_start= time();
 
-unless (-d $data_dir)
-{
-  print "mkdir $data_dir\n";
-  mkdir ($data_dir);
-}
-unless (-d $out_dir)
-{
-  print "mkdir $out_dir\n";
-  mkdir ($out_dir)
-}
-
-# item list
-my $fnm_items= $data_dir . "/items.csv";
-
-local *FO_ITEMS;
-open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
-my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id ns rev_id rev_sha1 title);
-print FO_ITEMS join ($TSV_SEP, @cols1), "\n";
-autoflush FO_ITEMS 1;
-
-my $fo_rec= new FDS('out_pattern' => "${out_dir}/wkt%05d");
-# $fo_rec->set (compress => 0, out_extension => '');
-my $fo_count= $fo_rec->open();
-my $fo_pos= 0;
-
-my $debug= 0;
-my $pos;
-my $state= 0;
-my %ns;
-my @lines;
-my %frame;
-my @text;
-my $cnt_ATTN= 0;
-my $debug_item= 0;
-LINE: while (1)
-{
-  $pos= tell(FI);
-  my $l= <FI>;
-  last unless (defined ($l));
-
-  if ($state == 0 # only when the <page> is closed
-      && $fo_pos >= $OUT_CHUNK_SIZE)
+  unless (-d $data_dir)
   {
-    $fo_count= $fo_rec->open();
-    $fo_pos= 0;
+    print "mkdir $data_dir\n";
+    mkdir ($data_dir);
   }
-  $fo_pos= $fo_rec->tell();
-
-  $line++;
-  print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 100_000) == 0);
-
-  my $flush= 0;
-  chomp ($l);
-
-  print ">> [$state] [$l]\n" if ($debug > 1);
-  if ($state == 0)
+  unless (-d $out_dir)
   {
-    if ($l =~ m#^\s*<namespace key="([\-\d]+)" case="([^"]+)">([^"]*)</namespace>#)
-    {
-      my $ns= { ns_id => $1, ns_name => $3, ns_case => $2 };
-      $ns{$ns->{ns_id}}= $ns;
-    }
-    elsif ($l =~ m#^\s*<page>#)
-    {
-      # print ">>> PAGE\n";
-      $state= 1;
-      @lines= ( $l );
-      %frame= ( 'line' => $line, 'pos' => $pos, fo_count => $fo_count, fo_pos_beg => $fo_pos );
-    }
-  }
-  elsif ($state == 1)
-  {
-    push (@lines, $l);
-    if ($l =~ m#^\s*</page>#)
-    {
-      $state= 0;
-      $flush= 1;
-    }
-    elsif ($l =~ m#^\s*<revision>#)
-    {
-      # print ">>> REVISION\n";
-      $state= 2;
-      @text= ();
-    }
-    elsif ($l =~ m#^\s*<(title|ns|id)>([^<]+)</.+>#)
-    {
-      $frame{$1}= $2;
-    }
-  }
-  elsif ($state == 2)
-  {
-    push (@lines, $l);
-    if ($l =~ m#^\s*</revision>#)
-    {
-      $state= 1;
-    }
-    elsif ($l =~ m#^\s*<text xml:space="preserve">(.*)#) # TODO: check for other <text> tags
-    {
-      my $t= $1;
-      # print ">>> TEXT\n";
-      $state= ($t =~ s#</text>##) ? 2 : 3;
-      @text= ( $t );
-    }
-    elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
-    {
-      print "ATTN: strange text-tag: [$l] title=[$frame{title}]\n";
-      $cnt_ATTN++;
-      $debug_item= 1;
-    }
-    elsif ($l =~ m#^\s*<(id|sha1)>([^<]+)</.+>#)
-    {
-      $frame{'rev_'. $1}= $2;
-    }
-  }
-  elsif ($state == 3) # note: there could be <text>...</text> in a single line
-  {
-    push (@lines, $l);
-    if ($l =~ m#^(.*)</text>$#)
-    {
-      push (@text, $1); # line-fragment!
-      $state= 2;
-    }
-    else
-    {
-      push (@text, $l); # $line
-    }
+    print "mkdir $out_dir\n";
+    mkdir ($out_dir)
   }
 
-  if ($flush)
+  # item list
+  my $fnm_items= $data_dir . '/items.csv';
+
+  local *FO_ITEMS;
+  open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
+  my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id ns rev_id rev_sha1 title);
+  print FO_ITEMS join ($TSV_SEP, @cols1), "\n";
+  autoflush FO_ITEMS 1;
+
+  my $fo_rec= new FDS('out_pattern' => "${out_dir}/wkt%05d");
+  # $fo_rec->set (compress => 0, out_extension => '');
+  my $fo_count= $fo_rec->open();
+  my $fo_pos= 0;
+
+  my $debug= 0;
+  my $pos;
+  my $state= 0;
+  my %ns;
+  my @lines;
+  my %frame;
+  my @text;
+  my $cnt_ATTN= 0;
+  my $debug_item= 0;
+  LINE: while (1)
   {
-    $fo_rec->print (join ("\n", @lines));
+    $pos= tell(FI);
+    my $l= <FI>;
+    last unless (defined ($l));
 
-    $frame{fo_pos_end}= $fo_rec->tell();
-
-    if ($debug > 1 || $debug_item)
+    if ($state == 0 # only when the <page> is closed
+        && $fo_pos >= $OUT_CHUNK_SIZE)
     {
-      print "="x72, "\n";
-      print "frame: ", Dumper(\%frame);
-      print "text: ", Dumper(\@text);
-      print "lines: ", Dumper (\@lines);
-      print "="x72, "\n";
+      $fo_count= $fo_rec->open();
+      $fo_pos= 0;
+    }
+    $fo_pos= $fo_rec->tell();
 
-      $debug_item= 0;
+    $line++;
+    print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 100_000) == 0);
+
+    my $flush= 0;
+    chomp ($l);
+
+    print ">> [$state] [$l]\n" if ($debug > 1);
+    if ($state == 0)
+    {
+      if ($l =~ m#^\s*<namespace key="([\-\d]+)" case="([^"]+)">([^"]*)</namespace>#)
+      {
+        my $ns= { ns_id => $1, ns_name => $3, ns_case => $2 };
+        $ns{$ns->{ns_id}}= $ns;
+      }
+      elsif ($l =~ m#^\s*<page>#)
+      {
+        # print ">>> PAGE\n";
+        $state= 1;
+        @lines= ( $l );
+        %frame= ( 'line' => $line, 'pos' => $pos, fo_count => $fo_count, fo_pos_beg => $fo_pos );
+      }
+    }
+    elsif ($state == 1)
+    {
+      push (@lines, $l);
+      if ($l =~ m#^\s*</page>#)
+      {
+        $state= 0;
+        $flush= 1;
+      }
+      elsif ($l =~ m#^\s*<revision>#)
+      {
+        # print ">>> REVISION\n";
+        $state= 2;
+        @text= ();
+      }
+      elsif ($l =~ m#^\s*<(title|ns|id)>([^<]+)</.+>#)
+      {
+        $frame{$1}= $2;
+      }
+    }
+    elsif ($state == 2)
+    {
+      push (@lines, $l);
+      if ($l =~ m#^\s*</revision>#)
+      {
+        $state= 1;
+      }
+      elsif ($l =~ m#^\s*<text xml:space="preserve">(.*)#) # TODO: check for other <text> tags
+      {
+        my $t= $1;
+        # print ">>> TEXT\n";
+        $state= ($t =~ s#</text>##) ? 2 : 3;
+        @text= ( $t );
+      }
+      elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
+      {
+        print "ATTN: strange text-tag: [$l] title=[$frame{title}]\n";
+        $cnt_ATTN++;
+        $debug_item= 1;
+      }
+      elsif ($l =~ m#^\s*<(id|sha1)>([^<]+)</.+>#)
+      {
+        $frame{'rev_'. $1}= $2;
+      }
+    }
+    elsif ($state == 3) # note: there could be <text>...</text> in a single line
+    {
+      push (@lines, $l);
+      if ($l =~ m#^(.*)</text>$#)
+      {
+        push (@text, $1); # line-fragment!
+        $state= 2;
+      }
+      else
+      {
+        push (@text, $l); # $line
+      }
     }
 
-    print FO_ITEMS join ($TSV_SEP, map { $frame{$_} } @cols1), "\n";
+    if ($flush)
+    {
+      $fo_rec->print (join ("\n", @lines));
 
-    # statistics
-    $ns{$frame{ns}}->{use_count}++;
+      $frame{fo_pos_end}= $fo_rec->tell();
 
-    last if (defined ($MAX_INPUT_LINES) && $line > $MAX_INPUT_LINES);
+      if ($debug > 1 || $debug_item)
+      {
+        print "="x72, "\n";
+        print __LINE__, " frame: ", Dumper(\%frame);
+        print __LINE__, " text: ", Dumper(\@text);
+        print __LINE__, " lines: ", Dumper (\@lines);
+        print "="x72, "\n";
+
+        $debug_item= 0;
+      }
+
+      print FO_ITEMS join ($TSV_SEP, map { $frame{$_} } @cols1), "\n";
+
+      # statistics
+      $ns{$frame{ns}}->{use_count}++;
+
+      last if (defined ($MAX_INPUT_LINES) && $line > $MAX_INPUT_LINES);
+    }
   }
-}
 
   my $fnm_ns_json= join ('/', $data_dir, 'namespaces.json');
   my $fnm_ns_csv= join ('/', $data_dir, 'namespaces.csv');
