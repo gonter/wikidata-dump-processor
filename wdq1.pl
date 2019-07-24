@@ -186,7 +186,9 @@ sub analyze_wikidata_dump
     # item identifer (persons, places, etc.)
     'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
     'P227'  => wdpf ('P227', 'GND identifier'),
-    'P244'  => wdpf ('P244', 'LCAuth ID'), # Library of Congress ID for authority control (for books use P1144)
+    'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
+    'P1144' => wdpf ('P1144', 'LCCN'),      # Library of Congress Control Number (LCCN) (bibliographic) # publications only?
+    'P3266' => wdpf ('P3266', 'LocFDD ID'), # Library of Congress Format Description Document ID # sounds interesting
     'P1245' => wdpf ('P1245', 'OmegaWiki Defined Meaning'), # "Defined Meaning" on the site OmegaWiki
 
     # person identifiers
