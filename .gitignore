@@ -5,6 +5,7 @@ logs/
 wkt-??/
 tmp/
 @*
+*.ts
 *.swp
 *.tys
 *.items
