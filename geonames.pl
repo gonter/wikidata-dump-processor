@@ -5,14 +5,14 @@ use strict;
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
-my $dir= 'data/2019-08-05a';
+my $dir= shift (@ARGV) || 'data/2019-08-05a';
 
 my $data= {};
 
 read_tsv($data, join('/', $dir, 'P1566.csv'), 'P1566', 0);
 read_tsv($data, join('/', $dir, 'P227.csv'), 'P227', 1);
 
-write_data($data, 'geonames.tsv');
+write_data($data, join('/', $dir, 'wdq-geonames-gnd.tsv'));
 
 exit(0);
 
