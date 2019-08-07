@@ -38,6 +38,8 @@ TODO: write and describe ...
 
 h2. wdq2.pl
 
+h3. wdq2.pl --scan
+
 Creates an index for items.csv to be able to load individual frames
 from the item store and render them to STDOUT.
 
@@ -45,15 +47,21 @@ TODO:
 * factor out at least the rendering step into a library for other scripts
   to use.
 
+h3. wdq2.pl Q##### Q#####
+
+Extracts wikidata data from processed dump file for give Wikidata IDs.
+
 h3. data/out/wdq#####.cmp
 
 Each item as a JSON structure is compressed individually and written to
 a file with this name pattern.  The positional information in the items
 and P-catalogs are intended for subsequent processing steps (see wdq2.pl).
 
-h3. CSV files
+h2. CSV files
 
-h4. items.csv
+NOTE: all csv files are really TSV files: Tab separated columns with first line giving the column names.
+
+h3. items.csv
 
 |_. column |_. label |_. note |
 |   0 | line            | input file line number |
@@ -73,14 +81,14 @@ h4. items.csv
 |  14 | filtered_props  | list of properties recorded in P####.csv files |
 |  15 | claims          | complete list of properties |
 
-h5. lang and label
+h4. lang and label
 
 Only one label is recorded, the first available language is selected from an ordered list:
 
   my @langs= qw(en de it fr);
 
 
-h4. props.csv
+h3. props.csv
 
 |_. column |_. label |_. note |
 |   0 | prop         | property ID |
@@ -93,7 +101,7 @@ h4. props.csv
 TODO:
 * [_] check if it makes sense to select a primary language for label and description.
 
-h4. P####.csv
+h3. P####.csv
 
 |_. column |_. label |_. note |
 |   0 | line          | |
@@ -114,15 +122,15 @@ h4. P####.csv
 
 All other columns are the same as defined before under the heading "items.csv".
 
-h3. TODO
+h2. TODO
 
 * [X] take date parameter as a commandline argument and derive other parameters from that
 * [X] write props.json into the output directory
-* [_] fetch the dump from dumps server (check if file already exists or was changed)
-* [_] add code (which should go into a library) to retrieve selected items from wdq files
+* [x] fetch the dump from dumps server (check if file already exists or was changed) (wdq0.pl)
+* [x] add code (which should go into a library) to retrieve selected items from wdq files (wdq2.pl)
 * [_] add a section describing similar known projects
 
-h3. alternative download
+h2. alternative download
 
 see [5]
 
