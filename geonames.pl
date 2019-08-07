@@ -33,16 +33,20 @@ sub write_data
 
   print FO join ("\t", @columns), "\n";
 
-  foreach my $id (sort keys %$data)
+  ID: foreach my $id (sort keys %$data)
   {
-    my @fields= $id;
+    my $d= $data->{$id};
+
+    next ID unless (exists($d->{P227}));
+
+    my @vals= $id;
     foreach my $what (@what)
     {
-      my $x= $data->{$what};
-      push (@fields, map { $x->{$_} } @fields);
+      my $w= $d->{$what};
+      push (@vals, map { $w->{$_} } @fields);
     }
 
-    print FO join ("\t", @fields), "\n";
+    print FO join ("\t", @vals), "\n";
   }
   close (FO);
 }
@@ -55,7 +59,7 @@ sub read_tsv
   my $only_matching= shift;
 
   open (FI, '<:utf8', $tsv) or die "can't read $tsv";
-  my $columns= <FI>;
+  my $columns= <FI>; # TODO: chop columns and prepare index to match column numbers later on
   print "reading $tsv\n";
   my $count= 0;
   LINE: while (<FI>)
