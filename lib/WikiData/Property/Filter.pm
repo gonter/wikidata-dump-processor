@@ -1,6 +1,8 @@
 
 package WikiData::Property::Filter;
 
+use FileHandle;
+
 my $TSV_SEP= "\t";
 
 sub new
@@ -48,6 +50,7 @@ sub setup
           local *FO_Prop;
           if (open (FO_Prop, '>:utf8', $fnm_prop))
           {
+            autoflush FO_Prop 1;
             print FO_Prop join ($TSV_SEP, @$cols), "\n" if (defined ($cols));
             print "writing filter [$property] [$label] to [$fnm_prop]\n";
             $obj->{'_FO'}= *FO_Prop;
