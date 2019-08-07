@@ -266,7 +266,7 @@ sub analyze_wikidata_dump
 
     # Geography
     'P625'  => wdpf ('P625',  'Geo Coordinates'),
-    '1566'  => wdpf ('P1566', 'GeoNames ID'),
+    'P1566' => wdpf ('P1566', 'GeoNames ID'),
     'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
     'P1282' => wdpf ('P1282', 'OSM tag or key'),
 
