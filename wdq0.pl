@@ -150,6 +150,12 @@ sub fetch_and_convert
     print "cmd3: [", join (' ', @cmd3), "]\n";
     system (@cmd3);
 
+    notify ('wdq0: finished wdq3, starting geonames');
+    my $dir= sprintf("data/%da", $date);
+    my @cmd4= ('./geonames.pl', $dir);
+    print "cmd3: [", join (' ', @cmd4), "]\n";
+    system (@cmd4);
+
     # TODO: add symlink
     system (qw(rm data/latest));
     system ('ln', '-s', join ('', $date, $seq), 'data/latest');
