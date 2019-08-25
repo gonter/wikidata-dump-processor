@@ -151,7 +151,7 @@ sub analyze_wikidata_dump
   my $t_start= time();
 
   # item list
-  my $fnm_items= $data_dir . '/items.csv';
+  my $fnm_items= $data_dir . '/items_unsorted.csv';
 
   local *FO_ITEMS;
   open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";

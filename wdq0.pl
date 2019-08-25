@@ -140,6 +140,12 @@ sub fetch_and_convert
     print "cmd1: [", join (' ', @cmd1), "]\n";
     system (@cmd1);
 
+    my $dir= sprintf("data/%sa", $date);
+
+    my @cmd1b= ('./sort_items.pl', $dir);
+    print "cmd1b: [", join (' ', @cmd1b), "]\n";
+    system (@cmd1b);
+
     notify ('wdq0: finished wdq1, starting wdq2');
     my @cmd2= (qw(./wdq2.pl --scan --date), $date);
     print "cmd2: [", join (' ', @cmd2), "]\n";
@@ -151,9 +157,8 @@ sub fetch_and_convert
     system (@cmd3);
 
     notify ('wdq0: finished wdq3, starting geonames');
-    my $dir= sprintf("data/%da", $date);
     my @cmd4= ('./geonames.pl', $dir);
-    print "cmd3: [", join (' ', @cmd4), "]\n";
+    print "cmd4: [", join (' ', @cmd4), "]\n";
     system (@cmd4);
 
     # TODO: add symlink
