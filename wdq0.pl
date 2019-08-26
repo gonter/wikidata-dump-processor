@@ -19,12 +19,15 @@ use WikiData::Utils;
 use Wiktionary::Utils;
 use PDS;
 
-my $dumps_source= 'https://dumps.wikimedia.org/other/wikidata/';
+my $data_dumps_source= 'https://dumps.wikimedia.org/other/wikidata/';
+my $wkt_dumps_source= 'https://dumps.wikimedia.org/';
 my $wget= '/usr/bin/wget';
 
 my $seq= 'a';
 my $date= '2017-04-10';
 my $expected_size= 11605714337;
+
+my $process_data_dumps= 1;
 
 my $lang= undef;
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
@@ -65,17 +68,31 @@ while (my $arg= shift (@ARGV))
   else { push (@PARS, $arg); }
 }
 
-notify('starting wdq0 loop');
+# notify('starting wdq0 loop');
 
 while (1)
 {
-  my $dumps= check_dump();
-  print "dumps: ", Dumper ($dumps);
-  foreach my $dump (@$dumps)
+  if ($process_data_dumps)
   {
-    fetch_and_convert ($dump->{date}, $seq, $dump->{size});
+    my $dumps= check_data_dump();
+    print "dumps: ", Dumper ($dumps);
+    foreach my $dump (@$dumps)
+    {
+      fetch_and_convert_data_dump ($dump->{date}, $seq, $dump->{size});
+    }
   }
 
+  print " checking wiktionary dumps\n";
+  foreach my $lang (qw(de en nl fr it))
+  {
+    print " checking wiktionary dump for lang=[$lang]\n";
+    my @lang_dirs= check_wkt_all_dumps($lang);
+    print __LINE__, " lang_dirs: ", join(' ', @lang_dirs), "\n";
+    my $last= pop (@lang_dirs);
+    my ($dir_url, $dump_file, $dump_date)= check_wkt_dump($lang, $last);
+    fetch_and_convert_wkt_dump($lang, $dir_url, $dump_file, $dump_date);
+  }
+ 
   my $sleep_time= 3600 + int(rand(3600));
   print scalar localtime (time()), " sleeping until ", scalar localtime (time()+$sleep_time), "\n";
   sleep ($sleep_time);
@@ -92,7 +109,7 @@ sub notify
   sleep(1);
 }
 
-sub fetch_and_convert
+sub fetch_and_convert_data_dump
 {
   my $date= shift;
   my $seq= shift;
@@ -109,7 +126,7 @@ sub fetch_and_convert
   {
     print "fetching stuff for date=$date seq=$seq data_dir=[$data_dir]\n";
     notify("wdq0: about to fetch dump for $date");
-    my ($fetched, $dump_file)= fetch_dump ($date);
+    my ($fetched, $dump_file)= fetch_data_dump ($date);
 
     if ($fetched)
     {
@@ -170,8 +187,7 @@ sub fetch_and_convert
 
 }
 
-
-sub fetch_dump
+sub fetch_data_dump
 {
   my $d= shift;
 
@@ -183,7 +199,7 @@ sub fetch_dump
 
   unless (-f $l_dump_file)
   {
-    my $dump_url= $dumps_source . $dump_file;
+    my $dump_url= $data_dumps_source . $dump_file;
     my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
     print "cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
     sleep (60); # TODO: wait a little, lately we fetched 0 byte size files; this should be checked before starting the download
@@ -201,9 +217,9 @@ sub fetch_dump
   ($fetched, $dump_file);
 }
 
-sub check_dump
+sub check_data_dump
 {
-  my $cmd_fetch= "$wget $dumps_source -O-";
+  my $cmd_fetch= "$wget $data_dumps_source -O-";
 
   print "cmd_fetch=[$cmd_fetch]\n";
   open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
@@ -228,5 +244,114 @@ sub check_dump
   }
 
   (wantarray) ? @res : \@res;
+}
+
+sub check_wkt_all_dumps
+{
+  my $lang= shift;
+
+  my $url= $wkt_dumps_source . $lang . 'wiktionary/';
+
+  my $cmd_fetch= "$wget $url -O-";
+
+  print "cmd_fetch=[$cmd_fetch]\n";
+  open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
+
+  my @dates;
+  LST: while (<LST>)
+  {
+    chop;
+
+    # print __LINE__, " line=[$_]\n";
+
+    push (@dates, $1) if ($_ =~ m#<a href="(\d{8})/"#);
+  }
+
+  @dates= sort @dates;
+  (wantarray) ? @dates : \@dates;
+}
+
+sub check_wkt_dump
+{
+  my $lang= shift;
+  my $date= shift;
+
+  my $url= $wkt_dumps_source . $lang . 'wiktionary/'. $date . '/';
+
+  my $cmd_fetch= "$wget $url -O-";
+
+  print "cmd_fetch=[$cmd_fetch]\n";
+  open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
+
+  my ($dump_file, $dump_date);
+  LST: while (<LST>)
+  {
+    chop;
+
+    # print __LINE__, " line=[$_]\n";
+
+    # push (@dates, $1) if ($_ =~ m#<a href="(\d{8})/"#);
+
+    if ($_ =~ m#(..wiktionary-(........)-pages-meta-current.xml.bz2)#)
+    {
+      ($dump_file, $dump_date)= ($1, $2);
+      print __LINE__, ">>> line=[$_]\n";
+    }
+  }
+
+  print __LINE__, ">>> dump_file=[$dump_file]\n";
+  ($url, $dump_file, $dump_date);
+}
+
+sub fetch_and_convert_wkt_dump
+{
+  my $lang= shift;
+  my $dir_url= shift;
+  my $dump_file= shift;
+  my $dump_date= shift;
+
+  my $dump_date2;
+  if ($dump_date =~ m#^(\d{4})(\d\d)(\d\d)$#)
+  {
+    my ($year, $mon, $day)= ($1, $2, $3);
+    $dump_date2= join('-', $year, $mon, $day)
+  }
+  else
+  {
+    print __LINE__, " dump_date=[$dump_date] malformed\n";
+    return undef;
+  }
+
+  print __LINE__, " lang=[$lang] dir_url=[$dir_url] dump_file=[$dump_file] dump_date=[$dump_date]\n";
+  my $l_dump_file= 'dumps/'. $dump_file;
+  print __LINE__, " l_dump_file=[$l_dump_file]\n";
+
+  unless (-f $l_dump_file)
+  {
+    my $dump_url= $dir_url . $dump_file;
+    print __LINE__, " fetching  l_dump_file=[$l_dump_file]\n";
+
+    notify("about to fetch wiktionary dump $dump_file");
+    my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
+    print "cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
+    sleep (60); # TODO: wait a little, lately we fetched 0 byte size files; this should be checked before starting the download
+    # return undef;
+    system (@cmd_fetch);
+  }
+
+  my $proc_seq= 'a';
+  my $proc_dir= sprintf('wkt-%s/%s%s', $lang, $dump_date2, $proc_seq);
+  print __LINE__, " proc_dir=[$proc_dir]\n";
+  unless (-d $proc_dir)
+  {
+    notify("about to process wiktionary dump $dump_file");
+    my @wkt_cmd= (qw(./wkt1.pl --lang), $lang, '--date', $dump_date2, '--seq', $proc_seq);
+    print __LINE__, " wkt_cmd: ", join(' ', @wkt_cmd), "\n";
+    system(@wkt_cmd);
+
+    my @idx_cmd= ('./wdq2.pl', '--lang', $lang, '--date', $dump_date2, '--scan');
+    print __LINE__, " idx_cmd: ", join(' ', @idx_cmd), "\n";
+    system(@idx_cmd);
+  }
 }
 
