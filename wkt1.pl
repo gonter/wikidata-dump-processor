@@ -3,7 +3,6 @@
 use strict;
 
 use JSON;
-use FileHandle;
 
 use Util::JSON;
 use Util::Simple_CSV;
@@ -11,9 +10,16 @@ use Util::Simple_CSV;
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
+use FileHandle;
+
+binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
+binmode( STDERR, ':utf8' ); autoflush STDERR 1;
+binmode( STDIN,  ':utf8' );
+
 use lib 'lib';
 use wkutils;
 use Wiktionary::Utils;
+use Wiktionary::Text;
 
 use FDS;
 
@@ -33,8 +39,6 @@ my $fo_compress= 2;
 # 0..don't compress at all
 # 1..compress output stream by piping into gzip; DO NOT USE
 # 2..compress individual records using Compress::Zlib::compress()
-
-binmode (STDOUT, ':utf8');
 
 my @PARS= ();
 while (my $arg= shift (@ARGV))
@@ -94,6 +98,8 @@ EOX
 
 analyze_wiktionary_dump ($fnm);
 
+my $ts_stop= localtime (time());
+
 exit(0);
 
 sub analyze_wiktionary_dump
@@ -112,6 +118,7 @@ sub analyze_wiktionary_dump
     print "mkdir $data_dir\n";
     mkdir ($data_dir);
   }
+
   unless (-d $out_dir)
   {
     print "mkdir $out_dir\n";
@@ -127,7 +134,7 @@ sub analyze_wiktionary_dump
   print FO_ITEMS join ($TSV_SEP, @cols1), "\n";
   autoflush FO_ITEMS 1;
 
-  my $fo_rec= new FDS('out_pattern' => "${out_dir}/wkt%05d");
+  my $fo_rec= new FDS('out_pattern' => "${out_dir}/wkt%05d", compress => $fo_compress);
   # $fo_rec->set (compress => 0, out_extension => '');
   my $fo_count= $fo_rec->open();
   my $fo_pos= 0;
@@ -140,7 +147,7 @@ sub analyze_wiktionary_dump
   my %frame;
   my @text;
   my $cnt_ATTN= 0;
-  my $debug_item= 0;
+  my @debug_item= ();
   LINE: while (1)
   {
     $pos= tell(FI);
@@ -203,6 +210,10 @@ sub analyze_wiktionary_dump
       {
         $state= 1;
       }
+      elsif ($l =~ m#^\s*<text xml:space="preserve" */>#)  # NOTE: empty text
+      {
+        $state= 1;
+      }
       elsif ($l =~ m#^\s*<text xml:space="preserve">(.*)#) # TODO: check for other <text> tags
       {
         my $t= $1;
@@ -212,9 +223,10 @@ sub analyze_wiktionary_dump
       }
       elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
       {
-        print "ATTN: strange text-tag: [$l] title=[$frame{title}]\n";
+        my $msg= "ATTN: strange text-tag: [$l] title=[$frame{title}]";
+        print $msg, "\n";
         $cnt_ATTN++;
-        $debug_item= 1;
+        push (@debug_item, $msg);
       }
       elsif ($l =~ m#^\s*<(id|sha1)>([^<]+)</.+>#)
       {
@@ -237,19 +249,37 @@ sub analyze_wiktionary_dump
 
     if ($flush)
     {
-      $fo_rec->print (join ("\n", @lines));
+      my $frame= join ("\n", @lines);
+      # utf8::encode($frame);
+      $fo_rec->print ($frame);
 
       $frame{fo_pos_end}= $fo_rec->tell();
 
-      if ($debug > 1 || $debug_item)
+      if ($debug > 1 || @debug_item)
       {
         print "="x72, "\n";
+        if (@debug_item)
+        {
+          print __LINE__, " debug_item reasons:\n";
+          foreach my $msg (@debug_item)
+          {
+            print __LINE__, " * reason=[", $msg, "]:\n";
+          }
+        }
+
         print __LINE__, " frame: ", Dumper(\%frame);
         print __LINE__, " text: ", Dumper(\@text);
         print __LINE__, " lines: ", Dumper (\@lines);
         print "="x72, "\n";
 
-        $debug_item= 0;
+        @debug_item= ();
+      }
+
+      # process wiki text
+      if ($seq eq 'b')
+      {
+        print __LINE__, " id=[", $frame{id}, "] title=[", $frame{title}, "]\n";
+        Wiktionary::Text::analyze_wiki_text(\@text);
       }
 
       print FO_ITEMS join ($TSV_SEP, map { $frame{$_} } @cols1), "\n";
@@ -277,3 +307,4 @@ sub analyze_wiktionary_dump
 
   1;
 }
+

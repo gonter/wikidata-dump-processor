@@ -75,7 +75,7 @@ sub open
   my $fo_fnm= sprintf ($self->{out_pattern} . $self->{out_extension}, ++$self->{_count});
   local *FO_RECODED;
 
-  if ($self->{'compress'} == 1)
+  if ($self->{compress} == 1)
   {
     open (FO_RECODED, '|-', "gzip -c >'$fo_fnm'") or die "can't write to [$fo_fnm]";
   }
@@ -116,7 +116,10 @@ sub print
   if ($self->{compress} == 2)
   {
     # binmode (FO, ':raw');
-    $px= print FO compress($l);
+    utf8::encode($l);
+    my $compressed= compress($l);
+    # print __LINE__, " compressed=[$compressed]\n";
+    $px= print FO $compressed;
   }
   else
   {
