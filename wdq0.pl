@@ -292,7 +292,7 @@ sub check_wkt_dump
 
     # push (@dates, $1) if ($_ =~ m#<a href="(\d{8})/"#);
 
-    if ($_ =~ m#(..wiktionary-(........)-pages-meta-current.xml.bz2)#)
+    if ($_ =~ m#<li class='done'>.*>(..wiktionary-(........)-pages-meta-current.xml.bz2)<#)
     {
       ($dump_file, $dump_date)= ($1, $2);
       print __LINE__, ">>> line=[$_]\n";
