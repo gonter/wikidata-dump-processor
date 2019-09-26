@@ -19,7 +19,7 @@ use WikiData::Property::Filter;
 use FDS;
 
 my @authctrl= qw(P213 P214 P227 P244 P496);
-my @extract= ('id', @authctrl, qw(P19 P20 P21));
+my @extract= ('id', @authctrl, qw(P19 P20 P21 P31));
 my @labels= (@extract, qw(tlt_en tlt_de tlt_fr tlt_it P569x P570x));
 
 my $TSV_SEP= "\t";
