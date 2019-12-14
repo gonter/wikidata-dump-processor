@@ -5,17 +5,25 @@ use strict;
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
 
+use lib 'lib';
+
+use Bitfield;
+
 my $data_dir= shift(@ARGV) || 'latest';
 
 my $fnm_props= "data/$data_dir/props.csv";
 my $fnm_items= "data/$data_dir/items.csv";
-my $MAX_USE_CNT= 200000;
+my $MAX_USE_CNT=  800000;
+# my $MIN_USE_CNT=  800000; # at about this count, the ids file is smaller than the associated bitfield
 
 my $props_dir= "data/$data_dir/props";
 mkdir ($props_dir) unless (-d $props_dir);
 
+my $cnt_props_open= 0;
+
 my $props= parse_props($fnm_props);
 parse_items($fnm_items, $props);
+write_props($props);
 
 sub parse_items
 {
@@ -50,7 +58,7 @@ sub parse_items
       if ($claim eq 'P31')
       {
         $has_P31= 1;
-        next CLAIM;
+        # next CLAIM;
       }
 
       my $prop= $props->{$claim};
@@ -64,6 +72,7 @@ sub parse_items
       else
       {
         local *FH= get_fh ($prop, $claim);
+        print FH $id, "\n";
       }
     }
 
@@ -82,7 +91,13 @@ sub parse_items
 =end comment
 =cut
 
-  PROP: foreach my $prop (keys %$props)
+}
+
+sub write_props
+{
+  my $props= shift;
+
+  PROP: foreach my $prop (sort keys %$props)
   {
     my $p= $props->{$prop};
 
@@ -103,11 +118,20 @@ sub parse_items
     }
     elsif (exists ($p->{_fh}))
     {
-      print "closing $p->{_fnm}\n";
+      my $fnm_ids= $p->{_fnm};
+      print "closing $fnm_ids \n";
       close ($p->{_fh});
+
+      my $bf= new Bitfield;
+      print "loading ids from $fnm_ids\n";
+      $bf->load_ids($fnm_ids, 1);
+
+      my $fnm_bf= $fnm_ids . '.bitfield';
+      print "writing bitfield to $fnm_bf\n";
+      $bf->write($fnm_bf);
+
     }
   }
-
 }
 
 sub get_fh
@@ -124,8 +148,11 @@ sub get_fh
     print "can't write to [$out_fnm]\n";
     return undef;
   }
+
   $prop->{_fnm}= $out_fnm;
-  print "opening $out_fnm\n";
+  $cnt_props_open++;
+  print scalar localtime(), " opening $out_fnm; $cnt_props_open file currently open\n";
+
   $prop->{_fh}= *F;
 }
 
@@ -153,13 +180,14 @@ sub parse_props
     # printf("%5s %10ld\n", $prop, $use_cnt);
     # push (@{$use_cnt{$use_cnt}}, $prop);
 
-    $props{$prop}= { use_cnt => $use_cnt };
+    $props{$prop}= { prop => $prop, use_cnt => $use_cnt };
     $total_cnt += $use_cnt;
   }
   close (FI);
 
-  printf("%5s %10ld\n", 'TOTAL', $total_cnt);
+  printf("%5s %10ld claims\n", 'TOTAL', $total_cnt);
   # print "use_cnt: ", Dumper(\%use_cnt);
+  sleep(3);
 
   \%props;
 }
