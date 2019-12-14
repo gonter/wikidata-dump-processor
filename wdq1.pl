@@ -27,12 +27,12 @@ my $MAX_INPUT_LINES= undef;
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
-my $seq= 'a';
-my $date= '2016-12-19'; # maybe a config file should be used to set up the defaults...
+my $seq= 'b';
+my $date= '2019-12-09'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
-my @langs= qw(en de it fr nl);
+my @langs= qw(en de it fr nl es hu pl pt);
 
 my $fo_compress= 2;
 # 0..don't compress at all
@@ -158,6 +158,11 @@ sub analyze_wikidata_dump
   my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
   print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
   # autoflush FO_ITEMS 1;
+
+  local *FO_LABELS;
+  my $fnm_labels= $data_dir . '/labels_unsorted.csv';
+  open (FO_LABELS, '>:utf8', $fnm_labels) or die "can't write to [$fnm_labels]";
+  print FO_LABELS join ($TSV_SEP, qw(id P31 authctrl), @langs), "\n";
 
   # properties
   my @cols_filt= (@cols1, 'val');
@@ -331,7 +336,8 @@ meta-properties: properties about properties
 
   # Authority Control
   my @authctrl= qw(P213 P214 P227 P244 P496);
-  my %authctrl= map { $_ => 1 } @authctrl;
+  # my %authctrl= map { $_ => 1 } @authctrl;
+  my %authctrl_props= map { $_ => 1 } (@authctrl, qw(P19 P20 P21 P31 P569 P570));
 
   my $fnm_authctrl= $data_dir . '/authctrl.json';
 
@@ -454,8 +460,8 @@ meta-properties: properties about properties
     my ($pref_l, $lang_l);
     foreach my $lang (@langs)
     {
-      my $label= $jl->{$lang}->{'value'};
-      my $desc=  $jd->{$lang}->{'value'};
+      my $label= $jl->{$lang}->{value};
+      my $desc=  $jd->{$lang}->{value};
       $tlt_l{$lang}= $label;
       $tlt_d{$lang}= $label;
 
@@ -476,6 +482,7 @@ meta-properties: properties about properties
     my @bm_row=(); for (my $i= 0; $i <= $max_prop; $i++) { $bm_row[$i]='.' }
 
     # Authority Control
+    my $P31val;
     my $authctrl;
     if ($ty eq 'item')
     {
@@ -489,10 +496,11 @@ meta-properties: properties about properties
         }
       }
 
-      if (!$use_authctrl && exists ($jc->{P31}))
+      # if (!$use_authctrl && exists ($jc->{P31}))
+      if (exists ($jc->{P31}))
       {
         my $P31= $jc->{P31};
-        my $P31val= $P31->[0]->{mainsnak}->{datavalue}->{value}->{id};
+        $P31val= $P31->[0]->{mainsnak}->{datavalue}->{value}->{id};
         # print __LINE__, " P31=[$P31] => [$P31val]\n";
         $use_authctrl= 1 if ($P31val eq 'Q5');
       }
@@ -587,12 +595,16 @@ meta-properties: properties about properties
       }
 
       if (defined ($authctrl))
-      { # collect all filtered properties for the authority record
-        $authctrl->{$property}= $y;
+      {
+        # collect all filtered properties for the authority record
+        # $authctrl->{$property}= $y;
+
+        # only collect properties which are actually used as authority record
+        $authctrl->{$property}= $y if (exists($authctrl_props{$property}));
       }
     }
 
-  # TODO: count claims, aliases, sitelinks, etc.
+    # TODO: count claims, aliases, sitelinks, etc.
 
     # print "[$line] [$pos] ", Dumper ($j) if ($ty eq 'property');
     print FO_ITEMS join ($TSV_SEP,
@@ -615,6 +627,18 @@ meta-properties: properties about properties
       print FO_AUTHCTRL encode_json($authctrl);
       $cnt_authctrl++;
       printf ("%9ld authority control records\n", $cnt_authctrl)  if (($cnt_authctrl % 1000) == 0);
+    }
+
+    # export labels
+    {
+      my @labels_langs= keys %tlt_l;
+      if (@labels_langs)
+      {
+        print FO_LABELS join ($TSV_SEP,
+                              $id, $P31val,
+                              (defined($authctrl)) ? join(',', sort keys %$authctrl) : '',
+                              (map { $tlt_l{$_} } @langs)), "\n";
+      }
     }
 
     last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
@@ -649,9 +673,9 @@ meta-properties: properties about properties
       $props{$prop_num}= $p0;
     }
 
-    my $dt= $p0->{'datatype'};
-    my $l_en= $p0->{'labels'}->{'en'}->{'value'};
-    my $d_en= $p0->{'descriptions'}->{'en'}->{'value'};
+    my $dt= $p0->{datatype};
+    my $l_en= $p0->{labels}->{en}->{value};
+    my $d_en= $p0->{descriptions}->{en}->{value};
     print PROPS_LIST join ($TSV_SEP, $prop_id, (scalar @prop), $prop_claims{$prop_id}, $dt, $l_en, $d_en), "\n";
   }
   close (PROPS_LIST);
