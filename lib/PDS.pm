@@ -40,6 +40,8 @@ my %defaults=
 );
 
 my $DEBUG= 0;
+my $show_dumps= 0;
+sub show_dumps { $show_dumps= shift; }
 
 sub new
 {
@@ -122,8 +124,11 @@ sub retrieve
   # print "pdsp: rec_num=[$rec_num] page_num=[$pdsp->{page_num}] rel_rec_num=[$rel_rec_num] rel_rec_pos=[$rel_rec_pos]\n";
   my $d= substr ($pdsp->{buffer}, $rel_rec_pos, $self->{rec_size});
 
-  print "d:\n"; main::hexdump ($d);
-  #print "buffer:\n"; main::hexdump ($pdsp->{buffer});
+  if ($show_dumps)
+  {
+    print "d:\n"; main::hexdump ($d);
+    # print "buffer:\n"; main::hexdump ($pdsp->{buffer});
+  }
 
   $d;
 }

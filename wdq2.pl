@@ -19,6 +19,14 @@ use WikiData::Utils;
 use Wiktionary::Utils;
 use PDS;
 
+use utf8;
+
+use FileHandle;
+
+binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
+binmode( STDERR, ':utf8' ); autoflush STDERR 1;
+binmode( STDIN,  ':utf8' );
+
 my ($date, $seq);
 my $lang= undef;
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
@@ -26,6 +34,9 @@ my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 my $find_column= 'label';
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
+my $show_mode= 'json';
+my @show_langs= qw(de de-at en it nl fr);
+my $show_dumps= 1;
 my $tsv_out;
 
 my $upd_paths= 1;
@@ -44,9 +55,9 @@ while (my $arg= shift (@ARGV))
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'lang') { $lang= $av || shift (@ARGV); $upd_paths= 1; }
-    elsif ($an eq 'find')  { $op_mode= 'find_items'; $find_column= $av || 'label' }
-    elsif ($an eq 'save')  { $tsv_out= $av || shift (@ARGV); }
-    elsif ($an eq 'scan')  { $op_mode= 'scan'; }
+    elsif ($an eq 'find') { $op_mode= 'find_items'; $find_column= $av || 'label' }
+    elsif ($an eq 'save') { $tsv_out= $av || shift (@ARGV); }
+    elsif ($an eq 'scan') { $op_mode= 'scan'; }
     else
     {
       usage();
@@ -56,7 +67,8 @@ while (my $arg= shift (@ARGV))
   {
     foreach my $flag (split('', $1))
     {
-      usage();
+      if ($flag eq 'L') { $show_mode= 'labels'; $show_dumps= 0; PDS::show_dumps(0); }
+      else { usage(); }
     }
   }
   else { push (@PARS, $arg); }
@@ -313,7 +325,7 @@ sub get_items
       fo_pos_beg => $beg,
       fo_pos_end => $end,
     };
-    print "row: ", Dumper ($row);
+    print "row: ", Dumper ($row) if ($show_dumps);
 
     if ($x_rec_num > 0)
     {
@@ -367,9 +379,41 @@ sub load_item
   else
   {
     my $json= JSON::decode_json ($block);
-    print "json: ", Dumper ($json);
+
+    if ($show_mode eq 'json')
+    {
+      print "json: ", Dumper ($json);
+    }
+    elsif ($show_mode eq 'labels')
+    {
+      my ($l, $d, $a)= map { $json->{$_} } qw(labels descriptions aliases);
+      foreach my $lang (@show_langs)
+      {
+        my $ll= get_value($l, $lang, 'value');
+        my $dl= get_value($d, $lang, 'value');
+        if (defined ($ll) || defined ($dl))
+        {
+          print join("\t", $lang, $ll, $dl), "\n";
+        }
+      }
+    }
+    else { print "unknown show_mode=[$show_mode]\n"; }
 
     return $json;
   }
+}
+
+sub get_value
+{
+  my $what= shift;
+  my @selectors= @_;
+
+  foreach my $s (@selectors)
+  {
+    my $x= $what->{$s};
+    return undef unless (defined ($x));
+    $what= $x;
+  }
+  $what;
 }
 
