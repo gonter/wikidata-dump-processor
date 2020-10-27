@@ -20,19 +20,20 @@ use FDS;
 
 my $TSV_SEP= "\t";
 # my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
-my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
+# my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
+my $OUT_CHUNK_SIZE= 2_100_000_000; # size of files containing item data in JSON format
 my $MAX_INPUT_LINES= undef;
-# my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time; TODO: add commandline option
+# my $MAX_INPUT_LINES= 1_000_000; # for debugging to limit processing time; TODO: add commandline option; takes about 6 mintues for 100000 items
 
 my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated arrays
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
-my $seq= 'b';
-my $date= '2019-12-09'; # maybe a config file should be used to set up the defaults...
+my $seq= 'a';
+my $date= '2020-10-19'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
-my @langs= qw(en de it fr nl es hu pl pt);
+my @langs= qw(en de ja it fr nl es hu pl);
 
 my $fo_compress= 2;
 # 0..don't compress at all
@@ -151,7 +152,7 @@ sub analyze_wikidata_dump
   my $t_start= time();
 
   # item list
-  my $fnm_items= $data_dir . '/items_unsorted.csv';
+  my $fnm_items= $data_dir . '/items_unsorted.tsv';
 
   local *FO_ITEMS;
   open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
@@ -160,7 +161,7 @@ sub analyze_wikidata_dump
   # autoflush FO_ITEMS 1;
 
   local *FO_LABELS;
-  my $fnm_labels= $data_dir . '/labels_unsorted.csv';
+  my $fnm_labels= $data_dir . '/labels_unsorted.tsv';
   open (FO_LABELS, '>:utf8', $fnm_labels) or die "can't write to [$fnm_labels]";
   print FO_LABELS join ($TSV_SEP, qw(id P31 authctrl), @langs), "\n";
 
@@ -173,10 +174,14 @@ sub analyze_wikidata_dump
     my $label= shift;
     my $transform= shift;
 
-    my $fnm_prop= $data_dir . '/' . $prop . '.csv';
+    my $fnm_prop= $data_dir . '/' . $prop . '.tsv';
 
     return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform, 'filename' => $fnm_prop);
   }
+
+=begin comment
+
+no filters; test 2020-10-11
 
   my %filters=
   (
@@ -207,6 +212,9 @@ sub analyze_wikidata_dump
     'P569'  => wdpf ('P569', 'Date of birth'),
     'P570'  => wdpf ('P570', 'Date of death'),
     'P2298' => wdpf ('P2298', 'NSDAP membership number (1925-1945)'),
+    'P53'   => wdpf ('P53', 'family'), # not the same as P734 family name
+    'P734'  => wdpf ('P734', 'family name'),
+    'P735'  => wdpf ('P735', 'given name'),
 
     # publications
     'P212'  => wdpf ('P212', 'ISBN-13'),
@@ -292,6 +300,17 @@ sub analyze_wikidata_dump
 
     # astronomy
     'P716' => wdpf ('P716' => 'JPL Small-Body Database identifier'),
+    'P744' => wdpf ('P744' => 'asteroid family'),
+    'P881' => wdpf ('P881' => 'type of variable star'),
+    'P999' => wdpf ('P999' => 'ARICNS'), # identifier for stars in ARICNS
+    'P5736' => wdpf ('P5736' => 'Minor Planet Center body ID'),
+
+  # 'P2211' => wdpf ('P2211' => 'position angle'), # xx
+  # 'P2212' => wdpf ('P2212' => 'angular distance'), # xx
+  # 'P2213' => wdpf ('P2213' => 'longitude of ascending node'), # xx
+  # 'P2215' => wdpf ('P2215' => 'proper motion'), # xx
+  # 'P2216' => wdpf ('P2216' => 'radial velocity'), # xx
+  # 'P4296' => wdpf ('P4296' => 'stellar rotational velocity'), # xx
 
     # Software
     'P1072' => wdpf ('P1072' => 'readable file format'),
@@ -318,8 +337,37 @@ sub analyze_wikidata_dump
     'P5246' => wdpf ('P5246' => 'Pornhub ID'),
     'P5267' => wdpf ('P5267' => 'YouPorn ID'),
     'P5540' => wdpf ('P5540' => 'RedTube ID'),
-    # '' => wdpf ('' => ''),
   );
+
+=end comment
+=cut
+
+  my %filters=
+  (
+    # structure
+    'P31'   => wdpf ('P31', 'instance of', 1),
+
+    # item identifer (persons, places, etc.)
+    'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
+    'P227'  => wdpf ('P227', 'GND identifier'),
+    'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
+
+    # person identifiers
+    'P214'  => wdpf ('P214', 'VIAF identifier'),
+    'P496'  => wdpf ('P496', 'ORCID identifier'),
+
+    # personal data?
+    'P569'  => wdpf ('P569', 'Date of birth'),
+    'P570'  => wdpf ('P570', 'Date of death'),
+
+    # other
+    'P6782'  => wdpf ('P6782', 'ROR ID'),
+
+    # Geography
+    'P1566' => wdpf ('P1566', 'GeoNames ID'),
+  );
+
+  # my %filters= ();
   my @filters= sort keys %filters;
 
 =begin comment
@@ -335,7 +383,7 @@ meta-properties: properties about properties
 =cut
 
   # Authority Control
-  my @authctrl= qw(P213 P214 P227 P244 P496);
+  my @authctrl= qw(P213 P214 P227 P244 P496 P6782);
   # my %authctrl= map { $_ => 1 } @authctrl;
   my %authctrl_props= map { $_ => 1 } (@authctrl, qw(P19 P20 P21 P31 P569 P570));
 
@@ -365,6 +413,7 @@ meta-properties: properties about properties
   my $fo_count= $fo_rec->open();
   my $fo_pos= 0;
 
+  # local *FO_rec_debug; open (FO_rec_debug, '>:raw', join('/', $out_dir, '@fo_rec_debug'));
   <FI>;
   my $pos;
   LINE: while ($running)
@@ -405,8 +454,8 @@ meta-properties: properties about properties
     }
 
     my ($id, $ty)= map { $j->{$_} } qw(id type);
-    my $id_num;
 
+    my $id_num;
     if ($id =~ m#^P(\d+)$#)
     {
       $id_num= undef;
@@ -427,6 +476,7 @@ meta-properties: properties about properties
     if ($ty eq 'property')
     {
       # $pos= tell(FI);
+      print __LINE__, " prop id=[$id]\n";
       push (@{$props{$id}}, $j);
       next LINE;
     }
@@ -440,6 +490,7 @@ meta-properties: properties about properties
     }
 
     # my $py= substr($l, 0, 30) . '...' . substr ($l, -30);
+    # print FO_rec_debug $l, "\n"; # this should be one json record per line
     my $px= $fo_rec->print($l);
     my $fo_pos_end= $fo_rec->tell();
     # print "px=[$px] l=[$py]\n";
@@ -590,7 +641,7 @@ meta-properties: properties about properties
                  ), "\n";
       }
       else
-      {
+      { # BUG HERE: this returns strange data; TODO: debugging!
         $y= WikiData::Property::Filter::_extract ($x, (ref($x) eq 'HASH') ? 1 : 0);
       }
 
@@ -624,7 +675,10 @@ meta-properties: properties about properties
     if (defined ($authctrl))
     {
       print FO_AUTHCTRL ",\n" if ($cnt_authctrl);
-      print FO_AUTHCTRL encode_json($authctrl);
+      # print FO_AUTHCTRL encode_json($authctrl);
+      my $json= new JSON;
+      print FO_AUTHCTRL $json->allow_blessed->convert_blessed->encode($authctrl);
+
       $cnt_authctrl++;
       printf ("%9ld authority control records\n", $cnt_authctrl)  if (($cnt_authctrl % 1000) == 0);
     }
@@ -641,7 +695,7 @@ meta-properties: properties about properties
       }
     }
 
-    last if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
+    $running= 0 if (defined ($MAX_INPUT_LINES) && $line >= $MAX_INPUT_LINES); ### DEBUG
     # $pos= tell(FI);
   }
 
@@ -653,9 +707,10 @@ meta-properties: properties about properties
   close (FO_AUTHCTRL);
 
   # check if there are multiple definitions of the same property and flatten the structure a bit
-  open (PROPS_LIST, '>:utf8', $data_dir . '/props.csv') or die;
+  open (PROPS_LIST, '>:utf8', $data_dir . '/props.tsv') or die;
   print PROPS_LIST join ($TSV_SEP, qw(prop def_cnt use_cnt datatype label_en descr_en)), "\n";
 
+  # print __LINE__, " props: ", Dumper(\%props);
   my @prop_ids= sort { $a <=> $b } map { ($_ =~ m#^P(\d+)$#) ? $1 : undef } keys %props;
 
   foreach my $prop_num (@prop_ids)
@@ -682,7 +737,9 @@ meta-properties: properties about properties
 
   if (open (PROPS, '>:utf8', $data_dir . '/props.json'))
   {
-    print PROPS encode_json (\%props);
+    # print PROPS encode_json (\%props);
+    my $json= new JSON;
+    print PROPS $json->allow_blessed->convert_blessed->encode(\%props);
     close (PROPS);
   }
 

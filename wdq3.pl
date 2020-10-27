@@ -26,8 +26,8 @@ my $TSV_SEP= "\t";
 # my $MAX_INPUT_LINES= undef;
 my $MAX_INPUT_LINES= 1_000; # for debugging to limit processing time; TODO: add commandline option
 
-my $seq= 'a';
-my $date= '2016-12-19'; # maybe a config file should be used to set up the defaults...
+my $seq= 'b';
+my $date= '2020-10-19'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -90,11 +90,13 @@ sub parse_authctrl
   if ($fnm_in =~ /\.gz$/)
   {
     open (FI, '-|', "gunzip -c '$fnm_in'") or die "can't gunzip [$fnm_in]";
+    print __LINE__, " decompressing [$fnm_in]\n";
   }
   # elsif bunzip ... see wkt1
   else
   {
     open (FI, '<:utf8', $fnm_in) or die "can't read [$fnm_in]";
+    print __LINE__, " reading [$fnm_in]\n";
   }
 
   open (FO, '>:utf8', $fnm_out) or die "cant' write to [$fnm_out]\n";
@@ -111,10 +113,11 @@ sub parse_authctrl
   {
     $pos= tell(FI);
     my $l= <FI>;
-    last unless (defined ($l));
+    last LINE unless (defined ($l));
 
     $line++;
-    print join (' ', $line, $pos), "\n" if (($line % 10_000) == 0);
+    print join (' ', scalar localtime(time()), $line, $pos), "\n" if (($line % 10_000) == 0);
+    # print __LINE__, " [$line] [$pos] [$l]\n";
 
     my $le= chop ($l);
     if ($l eq '[' || $l eq ']')
@@ -128,10 +131,15 @@ sub parse_authctrl
 
     # print "[$line] [$pos] [$l]\n";
     my $j;
-    eval { utf8::upgrade($l); $j= decode_json ($l); }; 
+    eval
+    {
+      # utf8::upgrade($l);
+      # $j= decode_json ($l);
+      $j= from_json ($l);
+    }; 
     if ($@)
     {
-      print "[$line] [$pos] ERROR=[", $@, "] line=[$l]\n";
+      print __LINE__, " [$line] [$pos] ERROR=[", $@, "] line=[$l]\n";
       print DIAG "[$line] [$pos] ERROR=[", $@, "] line=[$line]\n";
       # $pos= tell(FI);
       next LINE;
@@ -150,7 +158,6 @@ sub parse_authctrl
       print FO join ("\t", @d), "\n";
       $fo_lines++;
     }
-
   }
 
   close (FO);
@@ -180,8 +187,19 @@ sub get_time
 
   # print "s=[$s]\n";
   return '' unless ($s);
+  # print __LINE__, " get_time: s=[$s]\n";
 
-  my $j= decode_json ($s);
-  $j->{time};
+  my ($j, $time);
+  eval { $j= decode_json ($s); };
+  if ($@)
+  {
+    print __LINE__, " decode_json error=[$@] s=[$s]\n";
+  }
+  else
+  {
+    $time= $j->{time};
+  }
+
+  $time;
 }
 

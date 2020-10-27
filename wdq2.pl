@@ -27,7 +27,8 @@ binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
 binmode( STDERR, ':utf8' ); autoflush STDERR 1;
 binmode( STDIN,  ':utf8' );
 
-my ($date, $seq);
+my $date; # '2020-10-19';
+my $seq= 'a';
 my $lang= undef;
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
@@ -40,6 +41,11 @@ my $show_dumps= 1;
 my $tsv_out;
 
 my $upd_paths= 1;
+
+# experimental: transcribe data
+my $t_mode;
+my $t_file;
+local *T_FILE;
 
 autoflush STDOUT 1;
 
@@ -58,6 +64,7 @@ while (my $arg= shift (@ARGV))
     elsif ($an eq 'find') { $op_mode= 'find_items'; $find_column= $av || 'label' }
     elsif ($an eq 'save') { $tsv_out= $av || shift (@ARGV); }
     elsif ($an eq 'scan') { $op_mode= 'scan'; }
+    elsif ($an eq 't1') { $t_mode= 't1'; $t_file= $av || shift(@ARGV); }
     else
     {
       usage();
@@ -92,13 +99,13 @@ if ($upd_paths)
   { # must be Wiktionary, if there is a language defined ...
     ($fnm, $data_dir, $out_dir)= Wiktionary::Utils::get_paths ($lang, $date, $seq);
     print "ATTN: wiktionary mode!\n";
-    $fnm_items= join ('/', $data_dir, "items.csv");
+    $fnm_items= join ('/', $data_dir, "items.tsv");
     $cmp_fnm_pattern= '%s/wkt%05d.cmp';
   }
   else
   {
     ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
-    $fnm_items= join ('/', $data_dir, 'items.csv');
+    $fnm_items= join ('/', $data_dir, 'items.tsv');
   }
 }
 # print __LINE__, " date=[$date] seq=[$seq] data_dir=[$data_dir]\n";
@@ -122,6 +129,12 @@ if ($op_mode eq 'scan' || $op_mode eq 'find_items')
   my $rec_size= 32;
   my $pds= new PDS (rec_size => $rec_size, backing_file => $fnm_rec_idx);
   # print "pds: ", Dumper ($pds);
+
+  if (defined ($t_mode) && defined ($t_file))
+  {
+    open (T_FILE, '>>:utf8', $t_file) or die;
+    print __LINE__, " saving transcript into $t_file\n";
+  }
 
 if ($op_mode eq 'find_items')
 {
@@ -317,7 +330,7 @@ sub get_items
     # main::hexdump ($data);
     my ($x_rec_num, $pos_idx, $f_num, $beg, $end, @x)= unpack ('LLLLLLLL', $data);
 
-    # recreate most importent parts of one row from items.csv 
+    # recreate most importent parts of one row from items.tsv 
     my $row=
     {
       id         => 'Q'.$x_rec_num,
@@ -367,6 +380,11 @@ sub load_item
   sysread (FD, $buffer, $size);
   my $block= uncompress ($buffer);
   # print "block: ", Dumper ($block);
+
+  if (defined ($t_file))
+  {
+    print T_FILE $block, "\n";
+  }
 
   if (defined ($lang))
   {

@@ -126,7 +126,7 @@ sub analyze_wiktionary_dump
   }
 
   # item list
-  my $fnm_items= $data_dir . '/items.csv';
+  my $fnm_items= $data_dir . '/items.tsv';
 
   local *FO_ITEMS;
   open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
@@ -292,7 +292,7 @@ sub analyze_wiktionary_dump
   }
 
   my $fnm_ns_json= join ('/', $data_dir, 'namespaces.json');
-  my $fnm_ns_csv= join ('/', $data_dir, 'namespaces.csv');
+  my $fnm_ns_csv= join ('/', $data_dir, 'namespaces.tsv');
   print "saving namespaces to [$fnm_ns_json]\n";
   Util::JSON::write_json_file ($fnm_ns_json, \%ns);
 

@@ -11,8 +11,8 @@ use Bitfield;
 
 my $data_dir= shift(@ARGV) || 'latest';
 
-my $fnm_props= "data/$data_dir/props.csv";
-my $fnm_items= "data/$data_dir/items.csv";
+my $fnm_props= "data/$data_dir/props.tsv";
+my $fnm_items= "data/$data_dir/items.tsv";
 my $MAX_USE_CNT=  800000;
 # my $MIN_USE_CNT=  800000; # at about this count, the ids file is smaller than the associated bitfield
 
@@ -30,7 +30,7 @@ sub parse_items
   my $fnm= shift;
   my $props= shift;
 
-  open (FI, '<:utf8', $fnm) or die;
+  open (FI, '<:utf8', $fnm) or die "parse_items: can't read fnm=[$fnm]\n";
 
   my $cols= <FI>; chop($cols);
   my $idx= 0;
