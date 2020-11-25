@@ -365,6 +365,9 @@ no filters; test 2020-10-11
 
     # Geography
     'P1566' => wdpf ('P1566', 'GeoNames ID'),
+
+    # publications
+    'P356'  => wdpf ('P356', 'DOI'),
   );
 
   # my %filters= ();
