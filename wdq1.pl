@@ -362,6 +362,7 @@ no filters; test 2020-10-11
 
     # other
     'P6782'  => wdpf ('P6782', 'ROR ID'),
+    'P5748'  => wdpf ('P5748', 'Basisklassifikation'), # corresponding class in the Basisklassifikation library classification
 
     # Geography
     'P1566' => wdpf ('P1566', 'GeoNames ID'),
