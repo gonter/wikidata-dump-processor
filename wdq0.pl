@@ -114,7 +114,7 @@ sub notify
   print "NOTIFY: [$msg]\n";
   return unless ($notify_sms);
   system (qw(notify-sms.pl gg-uni),    scalar localtime(time()), $msg);
-  system (qw(notify-sms.pl gg-privat), scalar localtime(time()), $msg);
+# system (qw(notify-sms.pl gg-privat), scalar localtime(time()), $msg);
   sleep(1);
 }
 
@@ -189,7 +189,7 @@ sub fetch_and_convert_data_dump
 
     my $data_dir= join ('', $date, $seq);
 
-    notify ('wdq0: finished geonames, starting cntprops, data_dir=[$data_dir]');
+    notify ("wdq0: finished geonames, starting cntprops, data_dir=[$data_dir]");
     my @cmd5= ('./cntprops.pl', $data_dir);
     print scalar localtime(time()), " cmd5: [", join (' ', @cmd5), "]\n";
     system (@cmd5);
