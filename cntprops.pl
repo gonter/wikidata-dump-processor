@@ -151,7 +151,7 @@ sub get_fh
 
   $prop->{_fnm}= $out_fnm;
   $cnt_props_open++;
-  print scalar localtime(), " opening $out_fnm; $cnt_props_open file currently open\n";
+  print scalar localtime(), " opening $out_fnm; $cnt_props_open files currently open\n";
 
   $prop->{_fh}= *F;
 }
