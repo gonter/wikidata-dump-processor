@@ -346,6 +346,10 @@ no filters; test 2020-10-11
   (
     # structure
     'P31'   => wdpf ('P31', 'instance of', 1),
+    'P279'  => wdpf ('P279', 'subclass of', 1),
+    'P360'  => wdpf ('P360', 'is a list of', 1),
+    'P361'  => wdpf ('P361', 'part of', 1),
+    'P1269' => wdpf ('P1269', 'facet of', 1),
 
     # item identifer (persons, places, etc.)
     'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
@@ -369,6 +373,11 @@ no filters; test 2020-10-11
 
     # publications
     'P356'  => wdpf ('P356', 'DOI'),
+
+    # WoRMS database (2021-01-31)
+    'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
+    'P3860' => wdpf ('P3860', 'Wormbase Gene ID'),  # 2021-01-31:  20449 items
+    'P6678' => wdpf ('P6678', 'WoRMS source ID '),  # 2021-01-31:    639 items
   );
 
   # my %filters= ();
