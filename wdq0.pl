@@ -218,7 +218,7 @@ sub fetch_data_dump
   unless (-f $l_dump_file)
   {
     my $dump_url= $data_dumps_source . $dump_file;
-    my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
+    my @cmd_fetch= ($wget, $dump_url, '-4', '--no-check-certificate', '-O'.$l_dump_file);
     print scalar localtime(time()), " cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
     sleep (60); # TODO: wait a little, lately we fetched 0 byte size files; this should be checked before starting the download
     # return undef;
@@ -237,7 +237,7 @@ sub fetch_data_dump
 
 sub check_data_dump
 {
-  my $cmd_fetch= "$wget $data_dumps_source -O-";
+  my $cmd_fetch= "$wget $data_dumps_source -4 --no-check-certificate -O-";
 
   print scalar localtime(time()), " cmd_fetch=[$cmd_fetch]\n";
   open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
@@ -270,7 +270,7 @@ sub check_wkt_all_dumps
 
   my $url= $wkt_dumps_source . $lang . 'wiktionary/';
 
-  my $cmd_fetch= "$wget $url -O-";
+  my $cmd_fetch= "$wget $url -4 --no-check-certificate -O-";
 
   print scalar localtime(time()), " cmd_fetch=[$cmd_fetch]\n";
   open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
@@ -296,7 +296,7 @@ sub check_wkt_dump
 
   my $url= $wkt_dumps_source . $lang . 'wiktionary/'. $date . '/';
 
-  my $cmd_fetch= "$wget $url -O-";
+  my $cmd_fetch= "$wget $url -4 --no-check-certificate -O-";
 
   print scalar localtime(time()), " cmd_fetch=[$cmd_fetch]\n";
   open (LST, '-|', $cmd_fetch) or die "can't run $cmd_fetch";
@@ -350,7 +350,7 @@ sub fetch_and_convert_wkt_dump
     print __LINE__, " fetching  l_dump_file=[$l_dump_file]\n";
 
     notify("about to fetch wiktionary dump $dump_file");
-    my @cmd_fetch= ($wget, $dump_url, '-O'.$l_dump_file);
+    my @cmd_fetch= ($wget, $dump_url, '-4', '--no-check-certificate', '-O'.$l_dump_file);
     print scalar localtime(time()), " cmd_fetch: [", join (' ', @cmd_fetch), "]\n";
     sleep (60); # TODO: wait a little, lately we fetched 0 byte size files; this should be checked before starting the download
     # return undef;
