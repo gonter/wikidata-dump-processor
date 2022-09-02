@@ -49,6 +49,9 @@ local *T_FILE;
 
 autoflush STDOUT 1;
 
+my $export_file;
+local *EXP;
+
 my @PARS= ();
 while (my $arg= shift (@ARGV))
 {
@@ -64,6 +67,7 @@ while (my $arg= shift (@ARGV))
     elsif ($an eq 'find') { $op_mode= 'find_items'; $find_column= $av || 'label' }
     elsif ($an eq 'save') { $tsv_out= $av || shift (@ARGV); }
     elsif ($an eq 'scan') { $op_mode= 'scan'; }
+    elsif ($an eq 'export') { $export_file= $av || shift (@ARGV); }
     elsif ($an eq 't1') { $t_mode= 't1'; $t_file= $av || shift(@ARGV); }
     else
     {
@@ -111,7 +115,6 @@ if ($upd_paths)
 # print __LINE__, " date=[$date] seq=[$seq] data_dir=[$data_dir]\n";
 # TODO: fails if there is no data at the given date/seq
 
-
 my $csv= new Util::Simple_CSV (separator => "\t");
 
 local *FI_csv;
@@ -135,6 +138,11 @@ if ($op_mode eq 'scan' || $op_mode eq 'find_items')
     open (T_FILE, '>>:utf8', $t_file) or die;
     print __LINE__, " saving transcript into $t_file\n";
   }
+
+if (defined ($export_file))
+{
+  open (EXP, '>:utf8', $export_file) or die;
+}
 
 if ($op_mode eq 'find_items')
 {
@@ -325,9 +333,9 @@ sub get_items
   my $cnt_items= 0;
   foreach my $rec_num (sort { $a <=> $b } @rec_nums)
   {
-  print "rec_num=[$rec_num]\n";
+    print "rec_num=[$rec_num]\n";
     my $data= $pds->retrieve ($rec_num);
-    # main::hexdump ($data);
+    main::hexdump ($data);
     my ($x_rec_num, $pos_idx, $f_num, $beg, $end, @x)= unpack ('LLLLLLLL', $data);
 
     # recreate most importent parts of one row from items.tsv 
@@ -380,6 +388,10 @@ sub load_item
   sysread (FD, $buffer, $size);
   my $block= uncompress ($buffer);
   # print "block: ", Dumper ($block);
+  if (defined ($export_file))
+  {
+    print EXP $block, "\n";
+  }
 
   if (defined ($t_file))
   {
