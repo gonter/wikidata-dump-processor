@@ -92,7 +92,7 @@ sub open
   $self->{_fnm}= $fo_fnm;
   $self->{_open}= 1;
 
-  print "writing dumps to $fo_fnm\n";
+  print scalar localtime(time()), " writing dumps to $fo_fnm\n";
   # print FO_RECODED "[\n";
 
   $self->{_count};
