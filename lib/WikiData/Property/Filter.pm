@@ -43,7 +43,9 @@ sub setup
   my ($property, $cols, $label, $fnm_prop)= map { $obj->{$_} } qw(property cols label filename); 
   my $res= undef;
 
-      if ($property =~ m#^P\d+$#)
+      if ($property =~ m#^P\d+$#
+          || $property eq 'Punivie' # experimental ...
+         )
       {
         if (defined ($fnm_prop))
         {

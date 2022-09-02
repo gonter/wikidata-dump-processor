@@ -29,7 +29,7 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2020-10-19'; # maybe a config file should be used to set up the defaults...
+my $date= '2021-04-28'; # maybe a config file should be used to set up the defaults...
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -115,6 +115,7 @@ sub analyze_wikidata_dump
   my %lang_aliases;
   my %prop_claims;
   my %name_sitelinks;
+  my %lang_lemmas;
 
   my %props;
 
@@ -132,7 +133,7 @@ sub analyze_wikidata_dump
   my $diag_file= $data_dir.'/@diag';
   open (DIAG, '>:utf8', $diag_file) or die "can't write diag file=[$diag_file]";
 
-  my @item_attrs= qw(labels descriptions aliases claims sitelinks);
+  my @item_attrs= qw(labels descriptions aliases claims sitelinks lemmas);
 
   my $running= 1;
   $SIG{INT}= sub { $running= 0; };
@@ -156,7 +157,7 @@ sub analyze_wikidata_dump
 
   local *FO_ITEMS;
   open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
-  my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink lang label);
+  my @cols1= qw(line pos fo_count fo_pos_beg fo_pos_end id type revid cnt_label cnt_desc cnt_aliases cnt_claims cnt_sitelink cnt_lemmas lang label);
   print FO_ITEMS join ($TSV_SEP, @cols1, qw(filtered_props claims)), "\n";
   # autoflush FO_ITEMS 1;
 
@@ -198,8 +199,8 @@ no filters; test 2020-10-11
     'P227'  => wdpf ('P227', 'GND identifier'),
     'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
     'P1144' => wdpf ('P1144', 'LCCN'),      # Library of Congress Control Number (LCCN) (bibliographic) # publications only?
-    'P3266' => wdpf ('P3266', 'LocFDD ID'), # Library of Congress Format Description Document ID # sounds interesting
     'P1245' => wdpf ('P1245', 'OmegaWiki Defined Meaning'), # "Defined Meaning" on the site OmegaWiki
+    'P3266' => wdpf ('P3266', 'LocFDD ID'), # Library of Congress Format Description Document ID # sounds interesting
 
     # person identifiers
     'P214'  => wdpf ('P214', 'VIAF identifier'),
@@ -354,7 +355,10 @@ no filters; test 2020-10-11
     # item identifer (persons, places, etc.)
     'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
     'P227'  => wdpf ('P227', 'GND identifier'),
+    'P243'  => wdpf ('P243', 'OCLC control number'),  # identifier for a unique bibliographic record in OCLC WorldCat
     'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
+    'P2833' => wdpf ('P2833', 'ARKive ID'), # identifier for a taxon, in the ARKive database
+    'P8080' => wdpf ('P8080', 'Ökumenisches Heiligenlexikon ID'), # identifier for a saint in the database Ökumenisches Heiligenlexikon
 
     # person identifiers
     'P214'  => wdpf ('P214', 'VIAF identifier'),
@@ -378,6 +382,10 @@ no filters; test 2020-10-11
     'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
     'P3860' => wdpf ('P3860', 'Wormbase Gene ID'),  # 2021-01-31:  20449 items
     'P6678' => wdpf ('P6678', 'WoRMS source ID '),  # 2021-01-31:    639 items
+
+    # URLs
+    'P854' => wdpf ('P854' => 'reference URL'),
+    'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at'),
   );
 
   # my %filters= ();
@@ -443,7 +451,7 @@ meta-properties: properties about properties
     $fo_pos= $fo_rec->tell();
 
     $line++;
-    printf ("%9ld %12ld %3d %12ld\n", $line, $pos, $fo_count, $fo_pos) if (($line % 10_000) == 0);
+    printf ("%s %9ld %12ld %3d %12ld\n", scalar localtime(time()), $line, $pos, $fo_count, $fo_pos) if (($line % 10_000) == 0);
 
     my $le= chop ($l);
     if ($l eq '[' || $l eq ']')
@@ -466,7 +474,7 @@ meta-properties: properties about properties
       next LINE;
     }
 
-    my ($id, $ty)= map { $j->{$_} } qw(id type);
+    my ($id, $ty, $revid)= map { $j->{$_} } qw(id type lastrevid);
 
     my $id_num;
     if ($id =~ m#^P(\d+)$#)
@@ -474,6 +482,11 @@ meta-properties: properties about properties
       $id_num= undef;
     }
     elsif ($id =~ m#^Q(\d+)$#)
+    {
+      $id_num= $1;
+      $max_id= $id_num if ($id_num > $max_id);
+    }
+    elsif ($id =~ m#^L(\d+)$#)
     {
       $id_num= $1;
       $max_id= $id_num if ($id_num > $max_id);
@@ -494,7 +507,7 @@ meta-properties: properties about properties
       next LINE;
     }
 
-    if ($ty ne 'item' || !defined ($id_num))
+    if (($ty ne 'item' && $ty ne 'lexeme') || !defined ($id_num))
     {
       print "[$line] [$pos] unknown type=[$ty]\n";
       print DIAG "[$line] [$pos] type=[$ty] line=[$line]\n";
@@ -511,20 +524,30 @@ meta-properties: properties about properties
     foreach my $a (keys %$j) { $attrs{$a}++; }
 
     # grip and counts labels and descriptions
-    my ($jl, $jd, $ja, $jc, $js)= map { $j->{$_} } @item_attrs;
+    my ($jl, $jd, $ja, $jc, $js, $jle)= map { $j->{$_} } @item_attrs;
 
     my $c_jl= counter ($jl, \%lang_labels);
     my $c_jd= counter ($jd, \%lang_descr);
     my $c_ja= counter ($ja, \%lang_aliases);
     my $c_jc= counter ($jc, \%prop_claims);
     my $c_js= counter ($js, \%name_sitelinks);
+    my $c_jle= counter ($jle, \%lang_lemmas);
 
     # language translations
     my (%tlt_l, %tlt_d);
     my ($pref_l, $lang_l);
-    foreach my $lang (@langs)
+
+    my @x_langs= @langs;
+    if (defined ($jle))
     {
-      my $label= $jl->{$lang}->{value};
+      my @x= keys %$jle;
+      # print __LINE__, " x: ", join(', ', @x), "\n";
+      push (@x_langs, @x);
+    }
+
+    foreach my $lang (@x_langs)
+    {
+      my $label= (defined ($jle)) ? $jle->{$lang}->{value} : $jl->{$lang}->{value};
       my $desc=  $jd->{$lang}->{value};
       $tlt_l{$lang}= $label;
       $tlt_d{$lang}= $label;
@@ -579,6 +602,24 @@ meta-properties: properties about properties
             # P31 => $P31,
           };
       }
+    }
+
+    # experimental filter
+    my $exp_filter= 0;
+    if ($l =~ m#("[^"]*univie\.ac\.at[^"]*")#i)
+    {
+      my $y= $1;
+      my $fp= $filters{Punivie};
+      push (@found_properties, 'Punivie');
+
+      local *FO_p= $fp->{'_FO'};
+      print FO_p join ($TSV_SEP,
+                 $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
+                 $id, $ty, $revid,
+                 $c_jl, $c_jd, $c_ja, $c_jc, $c_js, $c_jle,     # counters
+                 $lang_l, $pref_l,
+                 $y,
+                 ), "\n";
     }
 
     # foreach my $property (@filters)
@@ -647,8 +688,8 @@ meta-properties: properties about properties
           local *FO_p= $fp->{'_FO'};
           print FO_p join ($TSV_SEP,
                  $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
-                 $id, $ty,
-                 $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
+                 $id, $ty, $revid,
+                 $c_jl, $c_jd, $c_ja, $c_jc, $c_js, $c_jle,     # counters
                  $lang_l, $pref_l,
                  $y,
                  ), "\n";
@@ -673,8 +714,8 @@ meta-properties: properties about properties
     # print "[$line] [$pos] ", Dumper ($j) if ($ty eq 'property');
     print FO_ITEMS join ($TSV_SEP,
                    $line, $pos, $fo_count, $fo_pos, $fo_pos_end,
-                   $id, $ty,
-                   $c_jl, $c_jd, $c_ja, $c_jc, $c_js,     # counters
+                   $id, $ty, $revid,
+                   $c_jl, $c_jd, $c_ja, $c_jc, $c_js, $c_jle,     # counters
                    $lang_l, $pref_l,
                    join (',', @found_properties),
                    join (',', @all_properties),
@@ -693,7 +734,7 @@ meta-properties: properties about properties
       print FO_AUTHCTRL $json->allow_blessed->convert_blessed->encode($authctrl);
 
       $cnt_authctrl++;
-      printf ("%9ld authority control records\n", $cnt_authctrl)  if (($cnt_authctrl % 1000) == 0);
+      printf ("%s %9ld authority control records\n", scalar localtime(time()), $cnt_authctrl)  if (($cnt_authctrl % 1000) == 0);
     }
 
     # export labels
@@ -766,6 +807,7 @@ meta-properties: properties about properties
     print STATS "lang_labels: ", Dumper (\%lang_labels);
     print STATS "lang_descr: ", Dumper (\%lang_descr);
     print STATS "lang_aliases: ", Dumper (\%lang_aliases);
+    print STATS "lang_lemmas: ", Dumper (\%lang_lemmas);
     print STATS "name_sitelinks: ", Dumper (\%name_sitelinks);
     print STATS "prop_claims: ", Dumper (\%prop_claims);
 
