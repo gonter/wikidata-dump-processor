@@ -51,7 +51,7 @@ while (my $arg= shift (@ARGV))
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
-    elsif ($an eq 'lang') { $lang=  $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'lang') { $lang= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'once')  { $op_mode= 'once'; $notify_sms= 0; }
     else
     {
@@ -125,7 +125,7 @@ sub fetch_and_convert_data_dump
   my $expected_size= shift;
 
   my $data_dir= sprintf ("data/%s%s", $date, $seq);
-  print "date=[$date] data_dir=[$data_dir]\n";
+  print "date=[$date] data_dir=[$data_dir] expected_size=[$expected_size]\n";
 
   if (-d $data_dir)
   {
@@ -182,22 +182,29 @@ sub fetch_and_convert_data_dump
     print scalar localtime(time()), " cmd3: [", join (' ', @cmd3), "]\n";
     system (@cmd3);
 
-    notify ('wdq0: finished wdq3, starting geonames');
-    my @cmd4= ('./geonames.pl', $dir);
-    print scalar localtime(time()), " cmd4: [", join (' ', @cmd4), "]\n";
-    system (@cmd4);
+    if ($expected_size <= 100_000_000_000)
+    {
+      notify ('wdq0: finished wdq3 (lexemes)');
+    }
+    else
+    {
+      notify ('wdq0: finished wdq3, starting geonames');
+      my @cmd4= ('./geonames.pl', $dir);
+      print scalar localtime(time()), " cmd4: [", join (' ', @cmd4), "]\n";
+      system (@cmd4);
 
-    my $data_dir= join ('', $date, $seq);
+      my $data_dir= join ('', $date, $seq);
 
-    notify ("wdq0: finished geonames, starting cntprops, data_dir=[$data_dir]");
-    my @cmd5= ('./cntprops.pl', $data_dir);
-    print scalar localtime(time()), " cmd5: [", join (' ', @cmd5), "]\n";
-    system (@cmd5);
+      notify ("wdq0: finished geonames, starting cntprops, data_dir=[$data_dir]");
+      my @cmd5= ('./cntprops.pl', $data_dir);
+      print scalar localtime(time()), " cmd5: [", join (' ', @cmd5), "]\n";
+      system (@cmd5);
 
-    if ($op_mode eq 'watch')
-    { # add symlink
-      system (qw(rm data/latest));
-      system ('ln', '-s', $data_dir, 'data/latest');
+      if ($op_mode eq 'watch' && $expected_size >= 100_000_000_000)
+      { # add symlink
+        system (qw(rm data/latest));
+        system ('ln', '-s', $data_dir, 'data/latest');
+      }
     }
 
     notify ('wdq0: finished wikidata conversion');
@@ -249,8 +256,10 @@ sub check_data_dump
     {
       my ($f1, $year, $mon, $day, $f2, $xdate, $time, $size)= ($1, $2, $3, $4, $5, $6, $7, $8);
       print "year=[$year] mon=[$mon] day=[$day] f1=[$f1] f2=[$f2] xdate=[$xdate] time=[$time] size=[$size]\n";
-      next LST if ($size <= 63);
-      next LST if ($size <= 30_000_000_000);
+      next LST if ($size <= 100); # dummy files have 63 or 67 bytes
+      next LST unless ((  $size >=     300_000_000 && $size <= 1_000_000_000) # lexeme dumps start at 300 MB these days
+                       || $size >= 100_000_000_000 # while normal data dumps start at 100 GB now
+                      );
       my $rec=
       {
         dump_file => $f1,
