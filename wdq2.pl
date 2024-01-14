@@ -36,7 +36,7 @@ my $find_column= 'label';
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
 my $show_mode= 'json';
-my @show_langs= qw(de de-at en it nl fr);
+my @show_langs= qw(de de-at en it nl fr xx);
 my $show_dumps= 1;
 my $tsv_out;
 

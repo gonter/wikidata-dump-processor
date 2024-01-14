@@ -24,8 +24,9 @@ use Wiktionary::Text;
 use FDS;
 
 my $TSV_SEP= "\t";
-# my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in JSON format
-my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in JSON format
+# my $OUT_CHUNK_SIZE= 500_000_000; # size of files containing item data in XML format
+# my $OUT_CHUNK_SIZE= 640_000_000; # size of files containing item data in XML format
+my $OUT_CHUNK_SIZE= 2_100_000_000; # size of files containing item data in XML format
 my $MAX_INPUT_LINES= undef;
 # my $MAX_INPUT_LINES= 100_000; # for debugging to limit processing time
 
@@ -126,7 +127,7 @@ sub analyze_wiktionary_dump
   }
 
   # item list
-  my $fnm_items= $data_dir . '/items.tsv';
+  my $fnm_items= $data_dir . '/items_unsorted.tsv';
 
   local *FO_ITEMS;
   open (FO_ITEMS, '>:utf8', $fnm_items) or die "can't write to [$fnm_items]";
@@ -148,6 +149,7 @@ sub analyze_wiktionary_dump
   my @text;
   my $cnt_ATTN= 0;
   my @debug_item= ();
+  my $page_count= 0;
   LINE: while (1)
   {
     $pos= tell(FI);
@@ -163,7 +165,7 @@ sub analyze_wiktionary_dump
     $fo_pos= $fo_rec->tell();
 
     $line++;
-    print join (' ', $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 100_000) == 0);
+    print join (' ', scalar localtime(time()), $page_count, $line, $pos, $fo_count, $fo_pos), "\n" if (($line % 100_000) == 0);
 
     my $flush= 0;
     chomp ($l);
@@ -181,6 +183,7 @@ sub analyze_wiktionary_dump
         # print ">>> PAGE\n";
         $state= 1;
         @lines= ( $l );
+        $page_count++;
         %frame= ( 'line' => $line, 'pos' => $pos, fo_count => $fo_count, fo_pos_beg => $fo_pos );
       }
     }
@@ -221,10 +224,10 @@ sub analyze_wiktionary_dump
         $state= ($t =~ s#</text>##) ? 2 : 3;
         @text= ( $t );
       }
-      elsif ($l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
+      elsif (0 && $l =~ m#^\s*<text(.*)>#) # TODO: check for other <text> tags
       {
         my $msg= "ATTN: strange text-tag: [$l] title=[$frame{title}]";
-        print $msg, "\n";
+        print __LINE__, ' ', $msg, "\n";
         $cnt_ATTN++;
         push (@debug_item, $msg);
       }

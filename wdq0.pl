@@ -11,6 +11,8 @@ use Compress::Zlib;
 
 use Util::Simple_CSV;
 use Util::hexdump;
+use Util::JSON;
+# use Net::fanout;
 
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
@@ -34,9 +36,11 @@ my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
 my $op_mode= 'watch';
-my $notify_sms= 1;
+my $notify_sms= 0;
 
 my $upd_paths= 0;
+
+my $wdq0_config= join('/', $ENV{HOME}, 'etc/wdq0.json');
 
 autoflush STDOUT 1;
 
@@ -67,6 +71,12 @@ while (my $arg= shift (@ARGV))
   }
   else { push (@PARS, $arg); }
 }
+
+my $cfg= Util::JSON::read_json_file($wdq0_config);
+# my $fanout= Net::fanout->new($cfg->{fanout});
+# print __LINE__, " fanout: ", Dumper($fanout);
+# my $channel= $cfg->{notify_channel};
+# $fanout->subscribe($channel); # we do not need the channel we use to notify others
 
 notify('starting wdq0 loop');
 
@@ -112,8 +122,12 @@ sub notify
   my $msg= shift;
 
   print "NOTIFY: [$msg]\n";
+  # $fanout->announce($channel, $msg);
+  my @cmd= ( '/usr/bin/fanout', '--PeerHost', $cfg->{fanout}->{PeerHost},
+             '--PeerPort', $cfg->{fanout}->{PeerPort}, $cfg->{notify_channel}, '--message', $msg );
+  system (@cmd);
   return unless ($notify_sms);
-  system (qw(notify-sms.pl gg-uni),    scalar localtime(time()), $msg);
+# system (qw(notify-sms.pl gg-uni),    scalar localtime(time()), $msg);
 # system (qw(notify-sms.pl gg-privat), scalar localtime(time()), $msg);
   sleep(1);
 }
@@ -368,6 +382,7 @@ sub fetch_and_convert_wkt_dump
 
   my $proc_seq= 'a';
   my $proc_dir= sprintf('wkt-%s/%s%s', $lang, $dump_date2, $proc_seq);
+  my $items= $proc_dir . '/items.tsv';
   print __LINE__, " proc_dir=[$proc_dir]\n";
   unless (-d $proc_dir)
   {
@@ -375,6 +390,13 @@ sub fetch_and_convert_wkt_dump
     my @wkt_cmd= (qw(./wkt1.pl --lang), $lang, '--date', $dump_date2, '--seq', $proc_seq);
     print __LINE__, scalar localtime(time()), " wkt_cmd: ", join(' ', @wkt_cmd), "\n";
     system(@wkt_cmd);
+  }
+
+  unless (-f $items)
+  {
+    my @cmd1b= ('./sort_items.pl', $proc_dir);
+    print scalar localtime(time()), " cmd1b: [", join (' ', @cmd1b), "]\n";
+    system (@cmd1b);
 
     my @idx_cmd= ('./wdq2.pl', '--lang', $lang, '--date', $dump_date2, '--scan');
     print __LINE__, scalar localtime(time()), " idx_cmd: ", join(' ', @idx_cmd), "\n";

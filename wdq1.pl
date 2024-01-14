@@ -386,6 +386,10 @@ no filters; test 2020-10-11
     # URLs
     'P854' => wdpf ('P854' => 'reference URL'),
     'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at'),
+
+    # Extras, see discussion
+    'P935' => wdpf ('P935' => 'Commons gallery'),
+    'P373' => wdpf ('P373' => 'Commons categroy'),
   );
 
   # my %filters= ();
