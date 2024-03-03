@@ -14,20 +14,20 @@ use Util::hexdump;
 
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
-
-use WikiData::Utils;
-use Wiktionary::Utils;
-use PDS;
+$Data::Dumper::Sort= 1;
 
 use utf8;
-
 use FileHandle;
 
 binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
 binmode( STDERR, ':utf8' ); autoflush STDERR 1;
 binmode( STDIN,  ':utf8' );
 
-my $date; # '2020-10-19';
+use WikiData::Utils;
+use Wiktionary::Utils;
+use PDS;
+
+my $date; # = '2024-01-01';
 my $seq= 'a';
 my $lang= undef;
 my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
@@ -227,6 +227,10 @@ sub parse_idx_file
     { # Wikidata
       $rec_num= $1;
     }
+    elsif ($id =~ m#^L(\d+)$#)
+    { # Wikidata Lexemes
+      $rec_num= $1;
+    }
     elsif ($id =~ m#^(\d+)$#)
     { # Wiktionary
       $rec_num= $1;
@@ -319,7 +323,7 @@ sub get_items
   my @rec_nums=();
   foreach my $item (@$pars)
   {
-    if ($item =~ m#^Q(\d+)$#)
+    if ($item =~ m#^[QL](\d+)$#)
     {
       push (@rec_nums, $1);
     }
@@ -387,6 +391,7 @@ sub load_item
   my $buffer;
   sysread (FD, $buffer, $size);
   my $block= uncompress ($buffer);
+  utf8::decode($block);
   # print "block: ", Dumper ($block);
   if (defined ($export_file))
   {
