@@ -30,6 +30,8 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 
 my $seq= 'a';
 my $date= '2021-04-28'; # maybe a config file should be used to set up the defaults...
+my $content= 'data'; # or 'lexemes'
+
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
@@ -51,6 +53,7 @@ while (my $arg= shift (@ARGV))
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'content')  { $content=  $av || shift (@ARGV); }
     elsif ($an eq 'max-lines') { $MAX_INPUT_LINES=  $av || shift (@ARGV); }
     else
     {
@@ -180,11 +183,13 @@ sub analyze_wikidata_dump
     return new WikiData::Property::Filter ('property' => $prop, 'label' => $label , 'cols' => \@cols_filt, 'transform' => $transform, 'filename' => $fnm_prop);
   }
 
+  my %filters= ();
+
 =begin comment
 
 no filters; test 2020-10-11
 
-  my %filters=
+  %filters=
   (
     # structure
     'P31'   => wdpf ('P31', 'instance of', 1),
@@ -343,54 +348,64 @@ no filters; test 2020-10-11
 =end comment
 =cut
 
-  my %filters=
-  (
-    # structure
-    'P31'   => wdpf ('P31', 'instance of', 1),
-    'P279'  => wdpf ('P279', 'subclass of', 1),
-    'P360'  => wdpf ('P360', 'is a list of', 1),
-    'P361'  => wdpf ('P361', 'part of', 1),
-    'P1269' => wdpf ('P1269', 'facet of', 1),
+  if ($content eq 'data')
+  {
+    %filters=
+    (
+      # structure
+      'P31'   => wdpf ('P31', 'instance of', 1),
+      'P279'  => wdpf ('P279', 'subclass of', 1),
+      'P360'  => wdpf ('P360', 'is a list of', 1),
+      'P361'  => wdpf ('P361', 'part of', 1),
+      'P1269' => wdpf ('P1269', 'facet of', 1),
 
-    # item identifer (persons, places, etc.)
-    'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
-    'P227'  => wdpf ('P227', 'GND identifier'),
-    'P243'  => wdpf ('P243', 'OCLC control number'),  # identifier for a unique bibliographic record in OCLC WorldCat
-    'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
-    'P2833' => wdpf ('P2833', 'ARKive ID'), # identifier for a taxon, in the ARKive database
-    'P8080' => wdpf ('P8080', 'Ökumenisches Heiligenlexikon ID'), # identifier for a saint in the database Ökumenisches Heiligenlexikon
+      # item identifer (persons, places, etc.)
+      'P213'  => wdpf ('P213', 'ISNI'), # International Standard Name Identifier for an identity
+      'P227'  => wdpf ('P227', 'GND identifier'),
+      'P243'  => wdpf ('P243', 'OCLC control number'),  # identifier for a unique bibliographic record in OCLC WorldCat
+      'P244'  => wdpf ('P244', 'LCAuth ID'),  # Library of Congress ID for authority control (for books use P1144) # aka LCNAF, person, places, institutions, etc.
+      'P2833' => wdpf ('P2833', 'ARKive ID'), # identifier for a taxon, in the ARKive database
+      'P8080' => wdpf ('P8080', 'Ökumenisches Heiligenlexikon ID'), # identifier for a saint in the database Ökumenisches Heiligenlexikon
 
-    # person identifiers
-    'P214'  => wdpf ('P214', 'VIAF identifier'),
-    'P496'  => wdpf ('P496', 'ORCID identifier'),
+      # person identifiers
+      'P214'  => wdpf ('P214', 'VIAF identifier'),
+      'P496'  => wdpf ('P496', 'ORCID identifier'),
 
-    # personal data?
-    'P569'  => wdpf ('P569', 'Date of birth'),
-    'P570'  => wdpf ('P570', 'Date of death'),
+      # personal data?
+      'P569'  => wdpf ('P569', 'Date of birth'),
+      'P570'  => wdpf ('P570', 'Date of death'),
 
-    # other
-    'P6782'  => wdpf ('P6782', 'ROR ID'),
-    'P5748'  => wdpf ('P5748', 'Basisklassifikation'), # corresponding class in the Basisklassifikation library classification
+      # other
+      'P6782'  => wdpf ('P6782', 'ROR ID'),
+      'P5748'  => wdpf ('P5748', 'Basisklassifikation'), # corresponding class in the Basisklassifikation library classification
 
-    # Geography
-    'P1566' => wdpf ('P1566', 'GeoNames ID'),
+      # Geography
+      'P1566' => wdpf ('P1566', 'GeoNames ID'),
 
-    # publications
-    'P356'  => wdpf ('P356', 'DOI'),
+      # publications
+      'P356'  => wdpf ('P356', 'DOI'),
 
-    # WoRMS database (2021-01-31)
-    'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
-    'P3860' => wdpf ('P3860', 'Wormbase Gene ID'),  # 2021-01-31:  20449 items
-    'P6678' => wdpf ('P6678', 'WoRMS source ID '),  # 2021-01-31:    639 items
+      # WoRMS database (2021-01-31)
+      'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
+      'P3860' => wdpf ('P3860', 'Wormbase Gene ID'),  # 2021-01-31:  20449 items
+      'P6678' => wdpf ('P6678', 'WoRMS source ID '),  # 2021-01-31:    639 items
 
-    # URLs
-    'P854' => wdpf ('P854' => 'reference URL'),
-    'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at'),
+      # URLs
+      'P854' => wdpf ('P854' => 'reference URL'),
+      'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at'),
 
-    # Extras, see discussion
-    'P935' => wdpf ('P935' => 'Commons gallery'),
-    'P373' => wdpf ('P373' => 'Commons categroy'),
-  );
+      # Extras, see discussion
+      'P935' => wdpf ('P935' => 'Commons gallery'),
+      'P373' => wdpf ('P373' => 'Commons categroy'),
+    );
+  }
+  elsif ($content eq 'lexemes')
+  {
+    %filters=
+    (
+      'P31'   => wdpf ('P31', 'instance of', 1),
+    );
+  }
 
   # my %filters= ();
   my @filters= sort keys %filters;
