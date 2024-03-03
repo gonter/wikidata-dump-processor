@@ -95,7 +95,7 @@ while (1)
   }
 
   print " checking wiktionary dumps\n";
-  foreach my $lang (qw(de en nl fr it))
+  foreach my $lang (qw(de en nl fr it id))
   {
     print " checking wiktionary dump for lang=[$lang]\n";
     my @lang_dirs= check_wkt_all_dumps($lang);
@@ -169,6 +169,8 @@ sub fetch_and_convert_data_dump
       }
     }
 
+    my $content= ($expected_size <= 100_000_000_000) ? 'lexemes' : 'data';
+
     unless (defined ($dump_file))
     {
       print "ERROR: dump_file=[$dump_file] not available\n";
@@ -176,7 +178,7 @@ sub fetch_and_convert_data_dump
     }
 
     notify ("wdq0: finished download, size=$fetched, starting wdq1");
-    my @cmd1= (qw(./wdq1.pl --date), $date, '--seq', $seq);
+    my @cmd1= (qw(./wdq1.pl --date), $date, '--seq', $seq, '--content', $content);
     print scalar localtime(time()), " cmd1: [", join (' ', @cmd1), "]\n";
     system (@cmd1);
 
@@ -191,17 +193,13 @@ sub fetch_and_convert_data_dump
     print scalar localtime(time()), " cmd2: [", join (' ', @cmd2), "]\n";
     system (@cmd2);
 
-    notify ('wdq0: finished wdq2, starting wdq3');
-    my @cmd3= (qw(./wdq3.pl --date), $date, '--seq', $seq);
-    print scalar localtime(time()), " cmd3: [", join (' ', @cmd3), "]\n";
-    system (@cmd3);
+    if ($content eq 'data')
+    {
+      notify ('wdq0: finished wdq2, starting wdq3');
+      my @cmd3= (qw(./wdq3.pl --date), $date, '--seq', $seq);
+      print scalar localtime(time()), " cmd3: [", join (' ', @cmd3), "]\n";
+      system (@cmd3);
 
-    if ($expected_size <= 100_000_000_000)
-    {
-      notify ('wdq0: finished wdq3 (lexemes)');
-    }
-    else
-    {
       notify ('wdq0: finished wdq3, starting geonames');
       my @cmd4= ('./geonames.pl', $dir);
       print scalar localtime(time()), " cmd4: [", join (' ', @cmd4), "]\n";
