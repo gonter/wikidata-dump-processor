@@ -339,10 +339,6 @@ no filters; test 2020-10-11
     'P1581' => wdpf ('P1581' => 'official blog'),
     'P2699' => wdpf ('P2699' => 'URL'),
 
-    # other person identifiers
-    'P5246' => wdpf ('P5246' => 'Pornhub ID'),
-    'P5267' => wdpf ('P5267' => 'YouPorn ID'),
-    'P5540' => wdpf ('P5540' => 'RedTube ID'),
   );
 
 =end comment
@@ -380,7 +376,10 @@ no filters; test 2020-10-11
       'P5748'  => wdpf ('P5748', 'Basisklassifikation'), # corresponding class in the Basisklassifikation library classification
 
       # Geography
+      'P625'  => wdpf ('P625',  'Geo Coordinates'),
       'P1566' => wdpf ('P1566', 'GeoNames ID'),
+      'P964'  => wdpf ('P964',  'Austrian municipality key'), # identifier for municipalities in Austria
+      'P1282' => wdpf ('P1282', 'OSM tag or key'),
 
       # publications
       'P356'  => wdpf ('P356', 'DOI'),
@@ -392,11 +391,12 @@ no filters; test 2020-10-11
 
       # URLs
       'P854' => wdpf ('P854' => 'reference URL'),
-      'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at'),
+      'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at', 1),
 
       # Extras, see discussion
       'P935' => wdpf ('P935' => 'Commons gallery'),
       'P373' => wdpf ('P373' => 'Commons categroy'),
+
     );
   }
   elsif ($content eq 'lexemes')
@@ -625,9 +625,11 @@ meta-properties: properties about properties
 
     # experimental filter
     my $exp_filter= 0;
-    if ($l =~ m#("[^"]*univie\.ac\.at[^"]*")#i)
+    if ($l =~ m#"([^"]*univie\.ac\.at[^"]*)"#i)
     {
       my $y= $1;
+      $y=~ s/\\//g; # this is a JSON fragment which encodes / as \/
+      print __LINE__, " y=[$y]\n";
       my $fp= $filters{Punivie};
       push (@found_properties, 'Punivie');
 
