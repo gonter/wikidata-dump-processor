@@ -78,8 +78,9 @@ sub extract
   my $fp= shift;
   my $x= shift;
 
-  my $y;
-  _extract ($x, $fp->{'transform'});
+  my $y= _extract ($x, $fp->{'transform'});
+  # print "extract: x=[$x] y=[$y]\n" if ($y =~ m#geschichte.univie.ac.at#);
+  $y;
 }
 
 sub _extract

@@ -160,7 +160,7 @@ sub parse_props
 {
   my $fnm= shift;
 
-  open (FI, '<:utf8', $fnm) or die;
+  open (FI, '<:utf8', $fnm) or die "can't read '$fnm'";
 
   my $cols= <FI>; chop($cols);
   my $idx= 0;

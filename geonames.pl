@@ -9,8 +9,8 @@ my $dir= shift (@ARGV) || 'data/2019-08-05a';
 
 my $data= {};
 
-read_tsv($data, join('/', $dir, 'P1566.csv'), 'P1566', 0);
-read_tsv($data, join('/', $dir, 'P227.csv'), 'P227', 1);
+read_tsv($data, join('/', $dir, 'P1566.tsv'), 'P1566', 0);
+read_tsv($data, join('/', $dir, 'P227.tsv'), 'P227', 1);
 
 write_data($data, join('/', $dir, 'wdq-geonames-gnd.tsv'));
 
