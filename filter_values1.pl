@@ -38,7 +38,7 @@ binmode( STDOUT, ':utf8' ); autoflush STDOUT 1;
 binmode( STDERR, ':utf8' ); autoflush STDERR 1;
 binmode( STDIN,  ':utf8' );
 
-my $wanted= 'P3035';
+my $wanted= 'P3097';
 
 print join("\t", qw(id label values)), "\n";
 
@@ -59,7 +59,7 @@ while (my $j= <>)
   my $xclaims= $claims->{$wanted};
   # print __LINE__, " id=[$id] label=[$label] wanted=[$wanted] xclaims:", Dumper($xclaims);
 
-  my @values= map { $_->{mainsnak}->{datavalue}->{value} } @$xclaims;
+  my @values= map { my $ms= $_->{mainsnak}; my $dv= $ms->{datavalue}; ($ms->{snaktype} eq 'value') ? $dv->{value} : $ms->{snaktype} } @$xclaims;
   print join("\t", $id, $label, join(' ', @values)), "\n";
 
 }
