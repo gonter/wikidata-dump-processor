@@ -35,12 +35,18 @@ my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 my $find_column= 'label';
 # my $op_mode= 'find_items';
 my $op_mode= 'get_items';
-my $show_mode= 'json';
-my @show_langs= qw(de de-at en it nl fr xx);
-my $show_dumps= 1;
+my @show_langs= qw(de de-at en it nl fr pt uk el ); # (ru ja zh ko)
 my $tsv_out;
+# my @filter_props= ();
+my $filter_prop= ();
+my $filter_mv_sep= ' ';
 
 my $upd_paths= 1;
+
+my $show_dumps= 0;
+my $show_mode= 'json';
+# my $show_mode= 'labels';
+# my $DEBUG= 0;
 
 # experimental: transcribe data
 my $t_mode;
@@ -69,6 +75,9 @@ while (my $arg= shift (@ARGV))
     elsif ($an eq 'scan') { $op_mode= 'scan'; }
     elsif ($an eq 'export') { $export_file= $av || shift (@ARGV); }
     elsif ($an eq 't1') { $t_mode= 't1'; $t_file= $av || shift(@ARGV); }
+  # elsif ($an eq 'filter') { my $x= $av || shift(@ARGV); @filter_props= split(',', $x); }
+    elsif ($an eq 'filter') { $filter_prop= $av || shift(@ARGV); }
+    elsif ($an eq 'silent') { $show_mode= 'silent'; $show_dumps= 0; PDS::show_dumps(0); }
     else
     {
       usage();
@@ -78,7 +87,10 @@ while (my $arg= shift (@ARGV))
   {
     foreach my $flag (split('', $1))
     {
-      if ($flag eq 'L') { $show_mode= 'labels'; $show_dumps= 0; PDS::show_dumps(0); }
+         if ($flag eq 'L') { $show_mode= 'labels';  $show_dumps= 0; PDS::show_dumps(0); }
+      elsif ($flag eq 'J') { $show_mode= 'json';    $show_dumps= 0; PDS::show_dumps(0); }
+      elsif ($flag eq 'S') { $show_mode= 'silent'; $show_dumps= 0; PDS::show_dumps(0); }
+      elsif ($flag eq 'D') { $show_mode= 'labels'; $show_dumps= 1; PDS::show_dumps(1); }
       else { usage(); }
     }
   }
@@ -95,7 +107,7 @@ else
 }
 
 # prepare items list
-my ($fnm, $data_dir, $out_dir);
+my ($fnm, $data_dir, $out_dir, $prop_dir);
 my $fnm_items;
 if ($upd_paths)
 {
@@ -108,7 +120,7 @@ if ($upd_paths)
   }
   else
   {
-    ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
+    ($fnm, $data_dir, $out_dir, $prop_dir)= WikiData::Utils::get_paths ($date, $seq);
     $fnm_items= join ('/', $data_dir, 'items.tsv');
   }
 }
@@ -119,6 +131,7 @@ my $csv= new Util::Simple_CSV (separator => "\t");
 
 local *FI_csv;
 my $fi_open;
+local *TSV_filtered;
 if ($op_mode eq 'scan' || $op_mode eq 'find_items')
 {
   (*FI_csv, $fi_open)= $csv->open_csv_file ($fnm_items);
@@ -126,6 +139,29 @@ if ($op_mode eq 'scan' || $op_mode eq 'find_items')
   $csv->{'__FI'}= *FI_csv;
   $csv->load_csv_file_headings (*FI_csv);
 }
+
+  if (defined ($filter_prop))
+  {
+    my $fnm_tsv=     join('/', $prop_dir, $filter_prop . '.tsv');
+       $export_file= join('/', $prop_dir, $filter_prop . '.ndjson');
+    print STDERR __LINE__, " filter_prop=[$filter_prop] fnm_tsv=[$fnm_tsv]\n";
+    open(TSV_filtered, '>:utf8', $fnm_tsv) or die;
+    # print TSV_filtered join("\t", qw(id lang label lastrevid modified pageid values)), "\n";
+    print TSV_filtered join("\t", 'id', @show_langs, qw(lastrevid modified pageid values)), "\n";
+
+    unless (@PARS)
+    {
+      my $fnm_prop= join('/', $prop_dir, $filter_prop);
+      open (P, '<:utf8', $fnm_prop) or die;
+      print STDERR " fnm_prop=[$fnm_prop]\n";
+      while (my $p= <P>)
+      {
+        chop($p);
+        push (@PARS, $p);
+      }
+      close(P);
+    }
+  }
 
   # paged data store for record index
   my $fnm_rec_idx= join ('/', $data_dir, 'records.idx');
@@ -136,12 +172,13 @@ if ($op_mode eq 'scan' || $op_mode eq 'find_items')
   if (defined ($t_mode) && defined ($t_file))
   {
     open (T_FILE, '>>:utf8', $t_file) or die;
-    print __LINE__, " saving transcript into $t_file\n";
+    print STDERR __LINE__, " saving transcript into $t_file\n";
   }
 
 if (defined ($export_file))
 {
   open (EXP, '>:utf8', $export_file) or die;
+  print STDERR __LINE__, " export_file=[$export_file]\n";
 }
 
 if ($op_mode eq 'find_items')
@@ -247,7 +284,7 @@ sub parse_idx_file
 
     next LINE;
 
-    # print "id=[$id] rec_num=[$rec_num] pos_idx=[$pos_idx] f_num=[$f_num] beg=[$beg] end=[$end]\n";
+    print "id=[$id] rec_num=[$rec_num] pos_idx=[$pos_idx] f_num=[$f_num] beg=[$beg] end=[$end]\n" if ($show_dumps);
   }
 
   $pds->flush_page();
@@ -276,7 +313,7 @@ sub find_items
 
   my $idx_id= $csv->{'index'}->{$find_column};
 
-  print "idx_id=[$idx_id]\n";
+  # print "idx_id=[$idx_id]\n";
   my %IDS= map { $_ => 1 } @$pars;
   print "IDS: ", Dumper (\%IDS);
 
@@ -337,9 +374,9 @@ sub get_items
   my $cnt_items= 0;
   foreach my $rec_num (sort { $a <=> $b } @rec_nums)
   {
-    print "rec_num=[$rec_num]\n";
+    # print "rec_num=[$rec_num]\n";
     my $data= $pds->retrieve ($rec_num);
-    main::hexdump ($data);
+    main::hexdump ($data) if ($show_dumps);
     my ($x_rec_num, $pos_idx, $f_num, $beg, $end, @x)= unpack ('LLLLLLLL', $data);
 
     # recreate most importent parts of one row from items.tsv 
@@ -384,7 +421,7 @@ sub load_item
   my $size= $end-$beg;
   my $fnm_data= sprintf ($cmp_fnm_pattern, $out_dir, $row->{'fo_count'});
 
-  print "id=[$id] f_num=[$f_num] fnm_data=[$fnm_data] beg=[$beg] end=[$end] size=[$size]\n";
+  # print "id=[$id] f_num=[$f_num] fnm_data=[$fnm_data] beg=[$beg] end=[$end] size=[$size]\n";
 
   open (FD, '<:raw', $fnm_data);
   seek (FD, $beg, 0);
@@ -415,9 +452,37 @@ sub load_item
   {
     my $json= JSON::decode_json ($block);
 
+    if (defined ($filter_prop))
+    {
+      my ($id, $claims, $labels, $lastrevid, $modified, $pageid)= map { $json->{$_} } qw(title claims labels lastrevid modified pageid);
+      my $filter_claims= $claims->{$filter_prop};
+      if (defined ($filter_claims))
+      {
+        my @values= get_snak_values($filter_claims);
+
+=begin comment
+        my ($label, $lang);
+        my @langs= (qw(en de fr it zh), sort keys %$labels);
+        while ($lang= shift (@langs))
+        {
+          if (exists($labels->{$lang})) { $label= $labels->{$lang}->{value}; last; }
+        }
+
+        print TSV_filtered join("\t", $id, $lang, $label, $lastrevid, $modified, $pageid, join($filter_mv_sep, @values)), "\n";
+        # print STDERR join("\t", $id, $label, join($filter_mv_sep, @values)), "\n";
+
+=end comment
+=cut
+
+        print TSV_filtered join("\t", $id, ( map { $labels->{$_}->{value} } @show_langs ), $lastrevid, $modified, $pageid, join($filter_mv_sep, @values)), "\n";
+
+      }
+    }
+
     if ($show_mode eq 'json')
     {
-      print "json: ", Dumper ($json);
+      # print "json: ", Dumper ($json);
+      print encode_json ($json);
     }
     elsif ($show_mode eq 'labels')
     {
@@ -432,6 +497,7 @@ sub load_item
         }
       }
     }
+    elsif ($show_mode eq 'silent') {} # be silent
     else { print "unknown show_mode=[$show_mode]\n"; }
 
     return $json;
@@ -452,3 +518,34 @@ sub get_value
   $what;
 }
 
+sub get_snak_values
+{
+  my $filter_claims= shift;
+
+  my @values;
+  foreach my $fc (@$filter_claims)
+  {
+    my $v;
+    my $ms= $fc->{mainsnak};
+    my $dv= $ms->{datavalue};
+    if ($ms->{snaktype} eq 'value')
+    {
+      if ($ms->{datatype} eq 'wikibase-item')
+      {
+        $v= $dv->{value}->{id};
+      }
+      else
+      {
+        $v= $dv->{value};
+      }
+    }
+    else
+    {
+      $v= $ms->{snaktype}
+    }
+
+    push (@values, $v);
+  }
+
+  (wantarray) ? @values : \@values;
+}
