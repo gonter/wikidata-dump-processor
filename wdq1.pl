@@ -222,15 +222,6 @@ no filters; test 2020-10-11
     'P734'  => wdpf ('P734', 'family name'),
     'P735'  => wdpf ('P735', 'given name'),
 
-    # publications
-    'P212'  => wdpf ('P212', 'ISBN-13'),
-    'P236'  => wdpf ('P212', 'ISSN'),
-    'P345'  => wdpf ('P345', 'IMDb identifier'),
-    'P356'  => wdpf ('P356', 'DOI'),
-    'P698'  => wdpf ('P698', 'PubMed ID'), # identifier for journal articles/abstracts in PubMed
-    'P957'  => wdpf ('P957', 'ISBN-10'),
-    'P3035' => wdpf ('P3035', 'ISBN publisher prefix'), # ISBN publisher prefix
-
     # arXiv.org
     'P818'  => wdpf ('P818', 'arXiv ID'),
     'P820'  => wdpf ('P820', 'arXiv classification'),
@@ -383,6 +374,7 @@ no filters; test 2020-10-11
 
       # publications
       'P356'  => wdpf ('P356', 'DOI'),
+      'P4109' => wdqf ('P4109', 'URN:NBN'),
 
       # WoRMS database (2021-01-31)
       'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
@@ -392,6 +384,17 @@ no filters; test 2020-10-11
       # URLs
       'P854' => wdpf ('P854' => 'reference URL'),
       'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at', 1),
+
+      # publications
+      'P212'  => wdpf ('P212', 'ISBN-13'),
+      'P236'  => wdpf ('P212', 'ISSN'),
+      'P345'  => wdpf ('P345', 'IMDb identifier'),
+      'P356'  => wdpf ('P356', 'DOI'),
+      'P698'  => wdpf ('P698', 'PubMed ID'), # identifier for journal articles/abstracts in PubMed
+      'P957'  => wdpf ('P957', 'ISBN-10'),
+      'P3035' => wdpf ('P3035', 'ISBN publisher prefix'), # ISBN publisher prefix
+      'P3097' => wdpf ('P3097', 'ISBN identifier group'), # ISBN prefix for countries or languages
+      'P3212' => wdpf ('P3212', 'ISAN'), # unique identifier for audiovisual works and related versions, similar to ISBN for books
 
       # Extras, see discussion
       'P935' => wdpf ('P935' => 'Commons gallery'),
@@ -404,6 +407,7 @@ no filters; test 2020-10-11
     %filters=
     (
       'P31'   => wdpf ('P31', 'instance of', 1),
+      'Punivie' => wdpf ('Punivie' => 'mention of univie.ac.at', 1),
     );
   }
 
