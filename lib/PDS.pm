@@ -69,7 +69,7 @@ sub new
     die "can not create paging backing file [$self->{backing_file}] in mode [$bf_mode]";
     # TODO: do not die here...
   }
-  print "opened paging backing file [$self->{backing_file}] in mode [$bf_mode]\n";
+  print "opened paging backing file [$self->{backing_file}] in mode [$bf_mode]\n" if ($DEBUG);
   $self->{__FPDS__}= *FPDS;
 
   $self->debug_hdr() if ($DEBUG > 0);
@@ -156,7 +156,7 @@ print "get_page_by_rec_num: page_num=[$page_num] rel_rec_num=[$rel_rec_num] rel_
   }
   elsif ($page_num < $last_page_num)
   {
-    print "page down: rec_num=[$rec_num] last=[$last_page_num] next=[$page_num]\n";
+    print "page down: rec_num=[$rec_num] last=[$last_page_num] next=[$page_num]\n" if ($DEBUG > 1);
 
     $self->{cnt_page_down}++;
     $self->{page_skips}->{$page_num}++;
@@ -173,7 +173,7 @@ print "get_page_by_rec_num: page_num=[$page_num] rel_rec_num=[$rel_rec_num] rel_
   {
     if ($page_num > $last_page_num+1)
     { # jump somehwere else
-      print "page up: rec_num=[$rec_num] last=[$last_page_num] next=[$page_num]\n";
+      print "page up: rec_num=[$rec_num] last=[$last_page_num] next=[$page_num]\n" if ($DEBUG > 1);
       $self->{cnt_page_up}++;
       $self->{page_skips}->{$page_num}++;
     }
@@ -315,8 +315,8 @@ sub flush_page
   my @d= @{$page->{dirty}};
   my $b= $page->{buffer};
 
-  my $cnt_dirty= @d;
-  print "flush: page_num=[$page_num] cnt_dirty=[$cnt_dirty]\n" if ($DEBUG > 1);
+  my $cnt_dirty1= @d;
+  print "flush: page_num=[$page_num] cnt_dirty1=[$cnt_dirty1]\n" if ($DEBUG > 1);
   # $self->debug_hdr();
 
   my $new_buffer= $self->setup_header($page_num, 0x12345678);
@@ -365,7 +365,7 @@ sub flush_page
   {
     print "ERROR saving page page_num=[$page_num] bc=[$bc] page_size=[$page_size]\n";
   }
-  print "NOTE: saved page page_num=[$page_num] cnt_dirty=[$cnt_dirty] cnt_buffer=[$cnt_buffer] cnt_filler=[$cnt_filler]\n";
+  print "NOTE: saved page page_num=[$page_num] cnt_dirty=[$cnt_dirty] cnt_buffer=[$cnt_buffer] cnt_filler=[$cnt_filler]\n" if ($DEBUG > 1);
 
   $self->{page}= undef;
   $self->{last_page_num}= -1;
