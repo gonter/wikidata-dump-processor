@@ -33,10 +33,10 @@ foreach my $row (@$rows)
 
   foreach my $value (@values)
   {
-    unless ($value =~ m#^[A-Za-z0-9]{22}$#)
+    unless ($value =~ m#^[0-7][0-9A-Za-z]{21}$#) # see https://www.wikidata.org/wiki/Property:P1902
     {
-      if ($value eq 'undefined') { $has_undefined++ }
-      elsif ($value eq 'novalue') { $has_novalue++ }
+         if ($value eq 'undefined') { $has_undefined++ }
+      elsif ($value eq 'novalue')   { $has_novalue++ }
       else { $has_invalid++ };
     }
   }
