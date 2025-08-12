@@ -29,7 +29,7 @@ my $exp_bitmap= 0; # 1..does not work; 2..makes no sense, too sparsely populated
 # not used my $LR_max_propid= 1930; # dump from 20150608
 
 my $seq= 'a';
-my $date= '2021-04-28'; # maybe a config file should be used to set up the defaults...
+my $date= '2025-07-30'; # maybe a config file should be used to set up the defaults...
 my $content= 'data'; # or 'lexemes'
 
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
@@ -70,7 +70,8 @@ while (my $arg= shift (@ARGV))
   else { push (@PARS, $arg); }
 }
 
-($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq) if ($upd_paths);
+($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq, $content) if ($upd_paths);
+print __LINE__, " fnm=[$fnm] data_dir=[$data_dir] out_dir=[$out_dir]\n"; # exit;
 
 sub usage
 {
@@ -133,7 +134,7 @@ sub analyze_wikidata_dump
     mkdir ($out_dir)
   }
 
-  my $diag_file= $data_dir.'/@diag';
+  my $diag_file= $data_dir.'/@wdq1.diag';
   open (DIAG, '>:utf8', $diag_file) or die "can't write diag file=[$diag_file]";
 
   my @item_attrs= qw(labels descriptions aliases claims sitelinks lemmas);
@@ -146,7 +147,10 @@ sub analyze_wikidata_dump
   {
     open (FI, '-|', "gunzip -c '$fnm'") or die "can't gunzip [$fnm]";
   }
-  # elsif bunzip ... see wkt1
+  elsif ($fnm =~ /\.bz2$/)
+  {
+    open (FI, '-|', "bunzip2 -c '$fnm'") or die "can't bunzip2 [$fnm]";
+  }
   else
   {
     open (FI, '<:utf8', $fnm) or die "can't read [$fnm]";
@@ -374,7 +378,8 @@ no filters; test 2020-10-11
 
       # publications
       'P356'  => wdpf ('P356', 'DOI'),
-      'P4109' => wdqf ('P4109', 'URN:NBN'),
+      'P4109' => wdpf ('P4109', 'URN:NBN'),
+      'P1662' => wdpf ('P1662', 'DOI prefix'), # identifier specific to a DOI registrant
 
       # WoRMS database (2021-01-31)
       'P850'  => wdpf ('P850',  'WoRMS-ID for taxa'), # 2021-01-31: 442262 items
