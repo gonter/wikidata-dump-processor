@@ -65,7 +65,7 @@ while (my $arg= shift (@ARGV))
   elsif ($arg =~ /^--(.+)/)
   {
     my ($an, $av)= split ('=', $1, 2);
-    print "an=[$an] av=[$av]\n";
+    # print "an=[$an] av=[$av]\n";
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
@@ -76,8 +76,8 @@ while (my $arg= shift (@ARGV))
     elsif ($an eq 'export') { $export_file= $av || shift (@ARGV); }
     elsif ($an eq 't1') { $t_mode= 't1'; $t_file= $av || shift(@ARGV); }
   # elsif ($an eq 'filter') { my $x= $av || shift(@ARGV); @filter_props= split(',', $x); }
-    elsif ($an eq 'filter') { $filter_prop= $av || shift(@ARGV); }
-    elsif ($an eq 'silent') { $show_mode= 'silent'; $show_dumps= 0; PDS::show_dumps(0); }
+    elsif ($an eq 'filter') { $filter_prop= $av || shift(@ARGV); unshift (@ARGV, '-S'); }
+    elsif ($an eq 'silent') { $show_mode= 'silent'; unshift (@ARGV, '-S'); }
     else
     {
       usage();
@@ -87,8 +87,8 @@ while (my $arg= shift (@ARGV))
   {
     foreach my $flag (split('', $1))
     {
-         if ($flag eq 'L') { $show_mode= 'labels';  $show_dumps= 0; PDS::show_dumps(0); }
-      elsif ($flag eq 'J') { $show_mode= 'json';    $show_dumps= 0; PDS::show_dumps(0); }
+         if ($flag eq 'L') { $show_mode= 'labels'; $show_dumps= 0; PDS::show_dumps(0); }
+      elsif ($flag eq 'J') { $show_mode= 'json';   $show_dumps= 0; PDS::show_dumps(0); }
       elsif ($flag eq 'S') { $show_mode= 'silent'; $show_dumps= 0; PDS::show_dumps(0); }
       elsif ($flag eq 'D') { $show_mode= 'labels'; $show_dumps= 1; PDS::show_dumps(1); }
       else { usage(); }
@@ -103,7 +103,7 @@ if (defined ($date))
 }
 else
 {
-  $date= 'latest';
+  $date= (substr($PARS[0], 0, 1) eq 'L') ? 'lexemes' : 'latest';
 }
 
 # prepare items list
@@ -428,8 +428,9 @@ sub load_item
   my $buffer;
   sysread (FD, $buffer, $size);
   my $block= uncompress ($buffer);
+  # print __LINE__, " block: ", Dumper ($block);
   utf8::decode($block);
-  # print "block: ", Dumper ($block);
+  # print __LINE__, " block: ", Dumper ($block);
   if (defined ($export_file))
   {
     print EXP $block, "\n";
@@ -450,11 +451,12 @@ sub load_item
   }
   else
   {
-    my $json= JSON::decode_json ($block);
+    my $data= JSON::decode_json ($block);
+    # print __LINE__, " data: ", Dumper ($data);
 
     if (defined ($filter_prop))
     {
-      my ($id, $claims, $labels, $lastrevid, $modified, $pageid)= map { $json->{$_} } qw(title claims labels lastrevid modified pageid);
+      my ($id, $claims, $labels, $lastrevid, $modified, $pageid)= map { $data->{$_} } qw(title claims labels lastrevid modified pageid);
       my $filter_claims= $claims->{$filter_prop};
       if (defined ($filter_claims))
       {
@@ -481,12 +483,11 @@ sub load_item
 
     if ($show_mode eq 'json')
     {
-      # print "json: ", Dumper ($json);
-      print encode_json ($json);
+      print $block; # original is JSON!
     }
     elsif ($show_mode eq 'labels')
     {
-      my ($l, $d, $a)= map { $json->{$_} } qw(labels descriptions aliases);
+      my ($l, $d, $a)= map { $data->{$_} } qw(labels descriptions aliases);
       foreach my $lang (@show_langs)
       {
         my $ll= get_value($l, $lang, 'value');
@@ -500,7 +501,7 @@ sub load_item
     elsif ($show_mode eq 'silent') {} # be silent
     else { print "unknown show_mode=[$show_mode]\n"; }
 
-    return $json;
+    return $data;
   }
 }
 
