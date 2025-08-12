@@ -12,7 +12,7 @@ use Compress::Zlib;
 use Util::Simple_CSV;
 use Util::hexdump;
 use Util::JSON;
-# use Net::fanout;
+use Net::fanout;
 
 use Data::Dumper;
 $Data::Dumper::Indent= 1;
@@ -27,13 +27,12 @@ my $wget= '/usr/bin/wget';
 
 my $seq= 'a';
 my $date= '2020-10-19';
+my $content= 'data';
 my $expected_size= 89827998242;
 
 my $process_data_dumps= 1;
 
 my $lang= undef;
-my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
-my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
 my $op_mode= 'watch';
 my $notify_sms= 0;
@@ -56,6 +55,7 @@ while (my $arg= shift (@ARGV))
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'lang') { $lang= $av || shift (@ARGV); $upd_paths= 1; }
+    elsif ($an eq 'content') { $content= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'once')  { $op_mode= 'once'; $notify_sms= 0; }
     else
     {
@@ -71,6 +71,9 @@ while (my $arg= shift (@ARGV))
   }
   else { push (@PARS, $arg); }
 }
+
+# my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
+# my $cmp_fnm_pattern= '%s/wdq%05d.cmp';
 
 my $cfg= Util::JSON::read_json_file($wdq0_config);
 # my $fanout= Net::fanout->new($cfg->{fanout});
@@ -122,11 +125,15 @@ sub notify
   my $msg= shift;
 
   print "NOTIFY: [$msg]\n";
-  # $fanout->announce($channel, $msg);
-  my @cmd= ( '/usr/bin/fanout', '--PeerHost', $cfg->{fanout}->{PeerHost},
-             '--PeerPort', $cfg->{fanout}->{PeerPort}, $cfg->{notify_channel}, '--message', $msg );
-  system (@cmd);
-  return unless ($notify_sms);
+  my $fanout= Net::fanout->new($cfg->{fanout});
+  print __LINE__, " fanout: ", Dumper($fanout);
+  my $channel= $cfg->{notify_channel};
+  $fanout->announce($channel, $msg);
+
+  # my @cmd= ( '/usr/bin/fanout', '--PeerHost', $cfg->{fanout}->{PeerHost},
+  #            '--PeerPort', $cfg->{fanout}->{PeerPort}, $cfg->{notify_channel}, '--message', $msg );
+  # system (@cmd);
+  # return unless ($notify_sms);
 # system (qw(notify-sms.pl gg-uni),    scalar localtime(time()), $msg);
 # system (qw(notify-sms.pl gg-privat), scalar localtime(time()), $msg);
   sleep(1);
@@ -147,7 +154,7 @@ sub fetch_and_convert_data_dump
   }
   else
   {
-    print "fetching stuff for date=$date seq=$seq data_dir=[$data_dir]\n";
+    print "fetching stuff for date=$date seq=$seq content=$content data_dir=[$data_dir]\n";
     notify("wdq0: about to fetch dump for $date");
     my ($fetched, $dump_file)= fetch_data_dump ($date);
 
@@ -169,7 +176,7 @@ sub fetch_and_convert_data_dump
       }
     }
 
-    my $content= ($expected_size <= 100_000_000_000) ? 'lexemes' : 'data';
+    $content= ($expected_size <= 100_000_000_000) ? 'lexemes' : 'data' unless (defined ($content));
 
     unless (defined ($dump_file))
     {
@@ -205,17 +212,17 @@ sub fetch_and_convert_data_dump
       print scalar localtime(time()), " cmd4: [", join (' ', @cmd4), "]\n";
       system (@cmd4);
 
-      my $data_dir= join ('', $date, $seq);
+      my $data_dir2= join ('', $date, $seq);
 
-      notify ("wdq0: finished geonames, starting cntprops, data_dir=[$data_dir]");
-      my @cmd5= ('./cntprops.pl', $data_dir);
+      notify ("wdq0: finished geonames, starting cntprops, data_dir=[$data_dir2]");
+      my @cmd5= ('./cntprops.pl', $data_dir2);
       print scalar localtime(time()), " cmd5: [", join (' ', @cmd5), "]\n";
       system (@cmd5);
 
       if ($op_mode eq 'watch' && $expected_size >= 100_000_000_000)
       { # add symlink
         system (qw(rm data/latest));
-        system ('ln', '-s', $data_dir, 'data/latest');
+        system ('ln', '-s', $data_dir2, 'data/latest');
       }
     }
 
