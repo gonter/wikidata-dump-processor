@@ -99,10 +99,12 @@ if ($rcsdiff_line_count)
 
   print __LINE__, " fnm=[$fnm] rcsdiff_line_count=[$rcsdiff_line_count] wdq_fetcher_changes=[$wdq_fetcher_changes]\n";
 
-  if (@commands && $cnt_unknown_lines == 0)
+  if (0 # better check it for some time
+      && @commands && $cnt_unknown_lines == 0
+     )
   {
     foreach my $command (@commands)
-    {
+    { # ATTN: these are long running processes!
       system (@$command);
     }
   }
