@@ -166,7 +166,7 @@ if ($op_mode eq 'scan' || $op_mode eq 'find_items')
   # paged data store for record index
   my $fnm_rec_idx= join ('/', $data_dir, 'records.idx');
   my $rec_size= 32;
-  my $pds= new PDS (rec_size => $rec_size, backing_file => $fnm_rec_idx);
+  my $pds= PDS->new(rec_size => $rec_size, backing_file => $fnm_rec_idx);
   # print "pds: ", Dumper ($pds);
 
   if (defined ($t_mode) && defined ($t_file))
