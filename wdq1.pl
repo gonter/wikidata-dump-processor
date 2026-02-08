@@ -35,7 +35,7 @@ my $content= 'data'; # or 'lexemes'
 my ($fnm, $data_dir, $out_dir)= WikiData::Utils::get_paths ($date, $seq);
 my $upd_paths= 0;
 
-my @langs= qw(en de ja it fr nl es hu pl);
+my @langs= qw(en de ja it fr nl es hu pl mul);
 
 my $fo_compress= 2;
 # 0..don't compress at all
