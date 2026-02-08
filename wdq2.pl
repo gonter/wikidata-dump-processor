@@ -464,7 +464,7 @@ sub load_item
 
 =begin comment
         my ($label, $lang);
-        my @langs= (qw(en de fr it zh), sort keys %$labels);
+        my @langs= (qw(en de fr it mul zh), sort keys %$labels);
         while ($lang= shift (@langs))
         {
           if (exists($labels->{$lang})) { $label= $labels->{$lang}->{value}; last; }
