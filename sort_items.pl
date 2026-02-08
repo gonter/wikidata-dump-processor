@@ -21,9 +21,9 @@ my $cmd= "( head -n1 $dir/items_unsorted.tsv ; ( tail -n +2 $dir/items_unsorted.
 print "cmd=[$cmd]\n";
 
 my $start= scalar localtime();
+system ($cmd);
 my $end=   scalar localtime();
 
-system ($cmd);
 print "start: $start\n";
 print "end:   $end\n";
 
