@@ -19,7 +19,6 @@ $Data::Dumper::Indent= 1;
 
 use WikiData::Utils;
 use Wiktionary::Utils;
-use PDS;
 
 my $data_dumps_source= 'https://dumps.wikimedia.org/other/wikidata/';
 my $wkt_dumps_source= 'https://dumps.wikimedia.org/';
