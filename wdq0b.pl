@@ -24,8 +24,10 @@ my $upd_paths= 0;
 my $doit= 0;
 my $op_mode= 'process';
 my $run_queued= 0;
+my $debug= 0;
 
 my ($pb_name, $col_name, $pb_api, $job_id);
+my $nex_file= '/var/lib/prometheus/node-exporter/wdq_queue.prom';
 
 my @PARS;
 while (my $arg= shift (@ARGV))
@@ -34,16 +36,17 @@ while (my $arg= shift (@ARGV))
   elsif ($arg =~ /^--(.+)/)
   {
     my ($an, $av)= split ('=', $1, 2);
-    print "an=[$an] av=[$av]\n";
+    # print "an=[$an] av=[$av]\n";
 
        if ($an eq 'date') { $date= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'seq')  { $seq=  $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'content') { $content= $av || shift (@ARGV); $upd_paths= 1; }
     elsif ($an eq 'doit') { $doit= 1 }
     # PocketBase
-    elsif ($an eq 'list') { $op_mode= 'list'; }
+    elsif ($an eq 'alert')  { $op_mode= 'alert'; }
+    elsif ($an eq 'list')   { $op_mode= 'list'; }
     elsif ($an eq 'queued') { $op_mode= 'queued'; }
-    elsif ($an eq 'run') { $run_queued= 1; }
+    elsif ($an eq 'run')    { $run_queued= 1; }
     else
     {
       usage();
@@ -53,7 +56,8 @@ while (my $arg= shift (@ARGV))
   {
     foreach my $flag (split('', $1))
     {
-      usage();
+      if ($flag eq 'D') { $debug++; }
+      else { usage(); }
     }
   }
   else { push (@PARS, $arg); }
@@ -64,7 +68,7 @@ if ($op_mode eq 'queued')
   my ($total_items, $items)= pb_show(prc_status => 'queued');
   print __LINE__, " total_items=[$total_items]\n";
 
-  if ($run_queued && $total_items >= 1)
+  if ($total_items >= 1)
   {
     my $job= $items->[0];
     print __LINE__, " preparing job: ", Dumper($job);
@@ -75,20 +79,28 @@ if ($op_mode eq 'queued')
     else { "die unknown dump_type=[$dt]"; }
 
     print __LINE__, " date=[$date] seq=[$seq] content=[$content]\n";
-    my $upd1=
-    { 
-      prc_status => 'in_progress',
-      prc_started => PocketBase::API::ts(),
-    };
-    print __LINE__, " update: id=[$id], upd1: ", Dumper($upd1);
-    if ($doit)
+
+    if ($doit && $run_queued)
     {
+      my $upd1=
+      { 
+        prc_status => 'in_progress',
+        prc_started => PocketBase::API::ts(),
+      };
+      print __LINE__, " update: id=[$id], upd1: ", Dumper($upd1);
+
       $job_id= $id;
       $pb_api->update($col_name, $id, $upd1);
+      $op_mode= 'process';
     }
-
-    $op_mode= 'process';
   }
+}
+elsif ($op_mode eq 'alert')
+{
+  my ($total_items, $items)= pb_show(prc_status => 'queued');
+  print __LINE__, " total_items=[$total_items]\n";
+  write_metrics ($total_items, $nex_file);
+  exit(0);
 }
 elsif ($op_mode eq 'list')
 {
@@ -102,6 +114,7 @@ if ($op_mode ne 'process')
 }
 
 # $op_mode eq 'process'
+
 my $dir= sprintf("data/%s%s", $date, $seq);
 my $data_dir= join ('', $date, $seq);
 
@@ -119,9 +132,14 @@ if ($content eq 'data')
   run (qw(rm data/latest));
   run ('ln', '-s', $data_dir, 'data/latest');
 }
+elsif ($content eq 'lexemes')
+{
+  run (qw(rm data/lexemes));
+  run ('ln', '-s', $data_dir, 'data/lexemes');
+}
 
 if (defined ($pb_api) && defined ($col_name) && defined ($job_id))
-{ # authentication may be necessary again, this job lasts for almost a week
+{ # authentication may be necessary again, this job lasts for almost a week!
   my ($code, $text, $result)= $pb_api->auth_with_password($col_name);
   # print __LINE__, " auth_with_password: code=[$code] result: ", Dumper ($result);
   print __LINE__, " auth_with_password: code=[$code]\n";
@@ -140,6 +158,27 @@ if (defined ($pb_api) && defined ($col_name) && defined ($job_id))
 }
 
 exit(0);
+
+sub write_metrics
+{
+  my $queued= shift;
+  my $nex_file= shift;
+
+  my $now= time();
+  # my $ts= scalar localtime ($now);
+  my $ts= PocketBase::API::ts();
+
+  open (NEX, '>:utf8', $nex_file) or die;
+  print NEX <<"EOX";
+# HELP wdq_fetcher_queued number of wdq items waiting for processing
+# TYPE wdq_fetcher_queued gauge
+wdq_fetcher_queued $queued
+# HELP agent_last_run last time this agent ran
+# TYPE agent_last_run counter
+agent_last_run{role="wdq0b"} $now
+EOX
+  close(NEX);
+}
 
 sub run
 {
@@ -197,7 +236,7 @@ sub pb_show
   }
 
   my $res= $pb_api->records($col_name, @query_parameters);
-  print __LINE__, " res=[$res]: ", Dumper($res);
+  print __LINE__, " res=[$res]: ", Dumper($res) if ($debug);
   # TODO: implement paging
   push (@items, @{$res->{items}});
   my $total_items= $res->{totalItems};
@@ -209,4 +248,10 @@ sub make_filter
 {
   my %pars= shift;
 }
+
+__END__
+
+=head1 TODO
+
+  - add --json output flag
 
