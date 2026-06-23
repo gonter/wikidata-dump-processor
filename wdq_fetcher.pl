@@ -53,6 +53,7 @@ while (defined ($arg= shift (@ARGV)))
     my ($opt, $val)= split ('=', $1, 2); 
     if ($opt eq 'help') { usage(); }
     elsif ($opt eq 'doit') { $doit= 1 }
+    elsif ($opt eq 'max-age') { $max_age= $val || shift(@ARGV) }
     else { usage(); }
   }
   elsif ($arg =~ /^-(.+)/)
@@ -228,7 +229,7 @@ if ($rcsdiff_line_count)
 open (NX, '>:utf8', $nx_fnm) or die;
 print __LINE__, " $now_ts writing metrics to [$nx_fnm]\n";
 print NX <<"EOX";
-# HELP wdq_fetcher_changes arcconf monitor noticed some problems
+# HELP wdq_fetcher_changes changes detected
 # TYPE wdq_fetcher_changes gauge
 wdq_fetcher_changes $wdq_fetcher_changes
 # HELP agent_last_run last time wdq_fetcher ran: $now_ts
