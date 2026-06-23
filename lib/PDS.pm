@@ -39,7 +39,7 @@ my %defaults=
     page_hits  => [], # number of times a page was loaded!
 );
 
-my $DEBUG= 0;
+my $DEBUG= 3;
 my $show_dumps= 0;
 sub show_dumps { $show_dumps= shift; }
 
@@ -62,7 +62,8 @@ sub new
 
   local *FPDS;
   my $bf= $self->{backing_file};
-  my $bf_mode= (-f $bf) ? '+<:raw' : '+>:raw';
+  # my $bf_mode= (-f $bf) ? '+<:raw' : '+>:raw';
+  my $bf_mode= '+<:raw';
 
   unless (open (FPDS, $bf_mode, $bf))
   {
@@ -108,18 +109,21 @@ sub store
   my $rec_num= shift;
   my $b= shift;
 
-  my ($pdsp, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
+  my ($pdsp, $page_num, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
   $pdsp->{dirty}->[$rel_rec_num]= $b;
+
+  return ($pdsp, $page_num, $rel_rec_num, $rel_rec_pos);
 }
 
 sub retrieve
 {
   my $self= shift;
   my $rec_num= shift;
-  my $b= shift;
+# my $b= shift;
 
-  my ($pdsp, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
+  my ($pdsp, $page_num, $rel_rec_num, $rel_rec_pos)= $self->get_page_by_rec_num ($rec_num);
   return undef unless (defined ($pdsp));
+
   # print "pdsp: ", main::Dumper($pdsp);
   # print "pdsp: rec_num=[$rec_num] page_num=[$pdsp->{page_num}] rel_rec_num=[$rel_rec_num] rel_rec_pos=[$rel_rec_pos]\n";
   my $d= substr ($pdsp->{buffer}, $rel_rec_pos, $self->{rec_size});
@@ -130,7 +134,7 @@ sub retrieve
     # print "buffer:\n"; main::hexdump ($pdsp->{buffer});
   }
 
-  $d;
+  ($d, $page_num, $rel_rec_num, $rel_rec_pos);
 }
 
 sub get_page_by_rec_num
@@ -138,7 +142,7 @@ sub get_page_by_rec_num
   my $self= shift;
   my $rec_num= shift;
 
-print "get_page_by_rec_num: rec_num=[$rec_num]\n" if ($DEBUG > 2);
+print __LINE__, " get_page_by_rec_num: rec_num=[$rec_num]\n" if ($DEBUG > 2);
   my ($rec_size, $recs_per_page, $last_page_num, $last_page)= map { $self->{$_} } qw(rec_size recs_per_page last_page_num last_page);
 
   # my $page_num= int ($rec_num * $rec_size / $self->{page_size});
@@ -152,6 +156,7 @@ print "get_page_by_rec_num: page_num=[$page_num] rel_rec_num=[$rel_rec_num] rel_
 
   if ($page_num == $last_page_num)
   {
+    print "page same: rec_num=[$rec_num] last=[$last_page_num] next=[$page_num]\n" if ($DEBUG > 1);
     $self->{cnt_page_same}++;
   }
   elsif ($page_num < $last_page_num)
@@ -202,7 +207,7 @@ print "get_page_by_rec_num: page_num=[$page_num] rel_rec_num=[$rel_rec_num] rel_
     die (__LINE__, " internal error");
   }
 
-  return ($self->{last_page}, $rel_rec_num, $rel_rec_pos);
+  return ($self->{last_page}, $page_num, $rel_rec_num, $rel_rec_pos);
 }
 
 sub print_page_stats
@@ -232,7 +237,7 @@ sub load_page
   my $self= shift;
   my $page_num= shift;
 
-  # print '='x72, "\nloading page_num=[$page_num]\n";
+  print '='x72, "\nloading page_num=[$page_num]\n" if ($DEBUG > 2);
   # if (0 && $page_num >= 200) { print "EXIT at page 200!\n"; exit; }
 
   my $new_page=
@@ -245,7 +250,7 @@ sub load_page
 
   if ($self->{do_read} || defined ($self->{page_hits}->[$page_num]))
   {
-    # print "TODO: loading page data page_num=[$page_num]\n";
+    print "TODO: loading page data page_num=[$page_num]\n" if ($DEBUG > 2);
     $self->{page_hits}->[$page_num]++;
 
     local *FPDS= $self->{'__FPDS__'};
@@ -253,12 +258,13 @@ sub load_page
 
   # $self->debug_hdr();
     my $rc= seek(FPDS, $page_pos, 0);
-    # printf ("%d seek: pos=[0x%08lX] rc=[%d]\n", __LINE__, $page_pos, $rc);
+    printf ("%d seek: pos=[0x%08lX] rc=[%d]\n", __LINE__, $page_pos, $rc) if ($DEBUG > 2);
     my $new_buffer;
     my $bc= sysread(FPDS, $new_buffer, $page_size);
     unless ($bc == $page_size)
     {
-      die "ERROR saving page page_num=[$page_num] bc=[$bc] page_size=[$page_size]\n";
+      print "ERROR loading page page_num=[$page_num] bc=[$bc] page_size=[$page_size]\n";
+      # not need to die(?)
     }
     $new_page->{buffer}= $new_buffer;
   }
