@@ -1,9 +1,11 @@
-dumps/
+# work dirs
+wkt-*
+dumps
 data
 html
-logs/
-wkt-??/
-tmp/
+logs
+# misc
+tmp
 @*
 *.ts
 *.swp
@@ -15,11 +17,6 @@ props.csv
 props.saved.csv
 props.json
 typescript
-P214.csv
-P227.csv
-P234.csv
-P496.csv
-P625.csv
 P*.csv
 P*.tsv
 Q*
